@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --app-bg: 243 239 230;
+  --app-surface: 255 252 246;
+  --app-subtle: 231 225 212;
+  --app-border: 210 200 184;
+  --app-text: 26 34 28;
+  --app-muted: 90 101 92;
+  --app-accent: 15 107 92;
+  --app-accent-soft: 220 240 235;
+  --app-success: 4 120 87;
+  --app-success-soft: 236 253 245;
+  --app-danger: 155 44 44;
+  --app-danger-soft: 254 242 242;
+  --app-warning: 180 83 9;
+  --app-warning-soft: 255 251 235;
+  --background: rgb(var(--app-bg));
+  --foreground: rgb(var(--app-text));
+}
+
+body {
+  color: var(--foreground);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgb(var(--app-accent) / 0.14), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, rgb(196 145 58 / 0.12), transparent 50%),
+    linear-gradient(180deg, rgb(var(--app-bg)), rgb(var(--app-subtle)));
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+}

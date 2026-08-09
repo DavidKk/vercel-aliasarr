@@ -8,3 +8,7 @@ coverage/
 .vercel/
 *.tsbuildinfo
 package-lock.json
+junit.xml
+test-results/
+playwright-report/
+blob-report/

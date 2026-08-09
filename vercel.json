@@ -1,9 +1,9 @@
 {
   "functions": {
-    "src/app/api/torznab/route.ts": {
+    "app/api/torznab/route.ts": {
       "maxDuration": 30
     },
-    "src/app/api/debug/search/route.ts": {
+    "app/api/debug/search/route.ts": {
       "maxDuration": 30
     }
   }
