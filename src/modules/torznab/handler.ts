@@ -1,14 +1,6 @@
 import { randomUUID } from "node:crypto";
-import path from "node:path";
-import { getEnv } from "@/shared/env";
 import { childLogger } from "@/shared/logger";
-import { createMemoryCache } from "@/modules/cache/memory-cache";
-import { loadAliasRepository } from "@/modules/media/alias-repository";
-import { buildIdentityFromTorznab } from "@/modules/media/identity";
-import { resolveTitles } from "@/modules/media/title-resolver";
-import { createProwlarrClient } from "@/modules/prowlarr/client";
-import { generateQueries } from "@/modules/search/query-generator";
-import { createSearchService } from "@/modules/search/search-service";
+import { getAppRuntime } from "@/modules/app/runtime";
 import type { SearchResult } from "@/modules/search/types";
 import {
   assertTorznabApiKey,
@@ -26,53 +18,15 @@ const XML_HEADERS = {
 
 export interface TorznabDeps {
   searchService: {
-    tvSearch: (req: ReturnType<typeof parseTorznabQuery>) => Promise<
-      SearchResult[]
-    >;
+    tvSearch: (
+      req: ReturnType<typeof parseTorznabQuery>
+    ) => Promise<SearchResult[]>;
   };
 }
 
-let singleton: TorznabDeps | null = null;
-
 export async function getDefaultTorznabDeps(): Promise<TorznabDeps> {
-  if (singleton) return singleton;
-  const env = getEnv();
-  const aliasDir = path.isAbsolute(env.ALIAS_DATA_DIR)
-    ? env.ALIAS_DATA_DIR
-    : path.join(process.cwd(), env.ALIAS_DATA_DIR);
-  const repo = await loadAliasRepository(aliasDir);
-  const prowlarr = createProwlarrClient({
-    baseUrl: env.PROWLARR_URL,
-    apiKey: env.PROWLARR_API_KEY,
-    timeoutMs: env.PROWLARR_TIMEOUT_MS,
-    mapOptions: env.PROWLARR_SONARR_URL
-      ? {
-          sonarrBaseUrl: env.PROWLARR_SONARR_URL,
-          upstreamBaseUrl: env.PROWLARR_URL,
-        }
-      : undefined,
-  });
-  const cache = createMemoryCache();
-  const searchService = createSearchService({
-    resolveTitlesForRequest: async (req) => {
-      const identity = buildIdentityFromTorznab(req);
-      const media =
-        identity.tvdbId != null ? repo.findByTvdbId(identity.tvdbId) : null;
-      return resolveTitles(identity, media, {
-        maxTitles: env.MAX_TITLES,
-        enableScriptConvert: true,
-      });
-    },
-    generateQueries,
-    prowlarr,
-    maxConcurrency: env.PROWLARR_MAX_CONCURRENCY,
-    resultLimit: env.SEARCH_RESULT_LIMIT,
-    maxFormatsPerTitle: env.MAX_QUERY_FORMATS_PER_TITLE,
-    maxQueries: env.MAX_PROWLARR_QUERIES,
-    cache,
-  });
-  singleton = { searchService };
-  return singleton;
+  const app = await getAppRuntime();
+  return { searchService: app.searchService };
 }
 
 function toItems(results: SearchResult[]): TorznabItem[] {
@@ -101,7 +55,10 @@ export async function handleTorznabRequest(
     assertTorznabApiKey(req.apikey);
 
     if (req.type === "caps") {
-      return new Response(buildCapsXml(), { status: 200, headers: XML_HEADERS });
+      return new Response(buildCapsXml(), {
+        status: 200,
+        headers: XML_HEADERS,
+      });
     }
 
     log.info(

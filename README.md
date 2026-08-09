@@ -13,7 +13,12 @@ npm install
 npm run dev
 ```
 
-本地验证：
+打开：
+
+- 首页：`http://localhost:3000`
+- 试搜控制台：`http://localhost:3000/admin`（需填写 `TORZNAB_API_KEY`）
+
+本地 API 验证：
 
 ```bash
 curl -s 'http://localhost:3000/api/health'
