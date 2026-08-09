@@ -1,0 +1,30 @@
+media:
+  tvdbId: 384640
+  primaryTitle: A Record of a Mortal's Journey to Immortality
+  originalLanguage: zh
+  aliases:
+    - title: 凡人修仙传
+      type: original
+      script: simplified
+      priority: 100
+      verified: true
+    - title: A Record of a Mortal's Journey to Immortality
+      type: official
+      script: latin
+      priority: 95
+      verified: true
+    - title: A Mortals Journey
+      type: site-alias
+      script: latin
+      priority: 92
+      verified: true
+    - title: 凡人修仙傳
+      type: translation
+      script: traditional
+      priority: 90
+      verified: true
+    - title: Fanren Xiu Xian Zhuan
+      type: romanized
+      script: latin
+      priority: 85
+      verified: true

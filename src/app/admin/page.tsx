@@ -11,6 +11,7 @@ type DebugResponse = {
   };
   titles: string[];
   queries: string[];
+  prowlarrReachable?: boolean;
   resultCount: number;
   deduplicatedCount: number;
   results: Array<{
@@ -20,6 +21,7 @@ type DebugResponse = {
     seeders?: number;
     guid: string;
   }>;
+  hint?: string;
   error?: string;
 };
 
@@ -81,7 +83,11 @@ export default function AdminPage() {
       <SiteNav active="admin" />
       <header className="page-head">
         <h1>试搜控制台</h1>
-        <p>用 TVDB ID 验证别名扩展与 Prowlarr 聚合结果。API Key 仅用于本次请求。</p>
+        <p>
+          用 TVDB ID 验证别名扩展与 Prowlarr 聚合结果。本地开发 API Key 填
+          <code> local-dev-secret-key </code>
+          （与 <code>.env.local</code> 中 <code>TORZNAB_API_KEY</code> 一致）。
+        </p>
       </header>
 
       <div className="stack">
@@ -181,6 +187,16 @@ export default function AdminPage() {
               </div>
               <div className="status-grid" style={{ marginTop: "1rem" }}>
                 <div className="status-item">
+                  <span className="label">Prowlarr</span>
+                  <span
+                    className={`value ${
+                      data.prowlarrReachable ? "ok" : "bad"
+                    }`}
+                  >
+                    {data.prowlarrReachable ? "reachable" : "unreachable"}
+                  </span>
+                </div>
+                <div className="status-item">
                   <span className="label">Raw</span>
                   <span className="value">{data.resultCount}</span>
                 </div>
@@ -189,12 +205,18 @@ export default function AdminPage() {
                   <span className="value">{data.deduplicatedCount}</span>
                 </div>
               </div>
+              {data.hint ? <p className="error">{data.hint}</p> : null}
             </section>
 
             <section className="panel">
               <h2>结果预览</h2>
               {data.results.length === 0 ? (
-                <p className="muted">无结果（空 RSS 对 Sonarr 仍合法）</p>
+                <p className="muted">
+                  无结果
+                  {!data.prowlarrReachable
+                    ? "（因 Prowlarr 不可达；别名扩展本身已成功）"
+                    : "（空 RSS 对 Sonarr 仍合法）"}
+                </p>
               ) : (
                 <div className="table-wrap">
                   <table>

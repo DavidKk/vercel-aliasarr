@@ -29,15 +29,46 @@ export interface AppRuntime {
 }
 
 let singleton: AppRuntime | null = null;
+let envFingerprint: string | null = null;
+
+function fingerprint(env: Env): string {
+  return [
+    env.PROWLARR_URL,
+    env.PROWLARR_API_KEY,
+    env.PROWLARR_SONARR_URL ?? "",
+    env.ALIAS_DATA_DIR,
+    env.MAX_TITLES,
+    env.MAX_PROWLARR_QUERIES,
+  ].join("|");
+}
 
 export async function getAppRuntime(): Promise<AppRuntime> {
-  if (singleton) return singleton;
-
   const env = getEnv();
+  const fp = fingerprint(env);
   const aliasDir = path.isAbsolute(env.ALIAS_DATA_DIR)
     ? env.ALIAS_DATA_DIR
     : path.join(process.cwd(), env.ALIAS_DATA_DIR);
+
+  // Always reload YAML aliases so new media files are picked up without restart.
   const repo = await loadAliasRepository(aliasDir);
+
+  if (singleton && envFingerprint === fp) {
+    singleton.repo = repo;
+    const current = singleton;
+    current.resolveForRequest = async (req: TorznabRequest) => {
+      const identity = buildIdentityFromTorznab(req);
+      const media =
+        identity.tvdbId != null ? repo.findByTvdbId(identity.tvdbId) : null;
+      const resolved = resolveTitles(identity, media, {
+        maxTitles: env.MAX_TITLES,
+        enableScriptConvert: true,
+      });
+      return { titles: resolved.titles, media };
+    };
+    return current;
+  }
+
+  envFingerprint = fp;
   const prowlarr = createProwlarrClient({
     baseUrl: env.PROWLARR_URL,
     apiKey: env.PROWLARR_API_KEY,
@@ -64,8 +95,17 @@ export async function getAppRuntime(): Promise<AppRuntime> {
 
   const searchService = createSearchService({
     resolveTitlesForRequest: async (req) => {
-      const { titles } = await resolveForRequest(req);
-      return { titles };
+      // refresh aliases each search
+      const latestRepo = await loadAliasRepository(aliasDir);
+      const identity = buildIdentityFromTorznab(req);
+      const media =
+        identity.tvdbId != null
+          ? latestRepo.findByTvdbId(identity.tvdbId)
+          : null;
+      return resolveTitles(identity, media, {
+        maxTitles: env.MAX_TITLES,
+        enableScriptConvert: true,
+      });
     },
     generateQueries,
     prowlarr,

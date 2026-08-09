@@ -2,6 +2,7 @@ import type { TorznabRequest } from "@/modules/torznab/types";
 import type { MemoryCache } from "@/modules/cache/memory-cache";
 import type { ProwlarrClient } from "@/modules/prowlarr/client";
 import { deduplicateResults } from "./deduplicator";
+import { filterRelevantResults } from "./relevance";
 import type { SearchResult } from "./types";
 
 export interface SearchServiceDeps {
@@ -48,9 +49,9 @@ async function mapPool<T, R>(
 
 function cacheKey(req: TorznabRequest): string {
   if (req.tvdbId != null) {
-    return `search:tvdb:${req.tvdbId}:s${req.season ?? "x"}:e${req.ep ?? "x"}`;
+    return `search:v2:tvdb:${req.tvdbId}:s${req.season ?? "x"}:e${req.ep ?? "x"}`;
   }
-  return `search:q:${req.q ?? ""}:s${req.season ?? "x"}:e${req.ep ?? "x"}`;
+  return `search:v2:q:${req.q ?? ""}:s${req.season ?? "x"}:e${req.ep ?? "x"}`;
 }
 
 export function createSearchService(deps: SearchServiceDeps) {
@@ -77,7 +78,10 @@ export function createSearchService(deps: SearchServiceDeps) {
       const batches = await mapPool(queries, deps.maxConcurrency, (q) =>
         deps.prowlarr.search(q)
       );
-      const merged = deduplicateResults(batches.flat());
+      const merged = filterRelevantResults(
+        deduplicateResults(batches.flat()),
+        titles
+      );
       const limited = merged.slice(0, deps.resultLimit);
       await deps.cache.set(
         key,

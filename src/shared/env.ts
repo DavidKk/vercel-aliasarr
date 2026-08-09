@@ -4,8 +4,8 @@ const EnvSchema = z.object({
   TORZNAB_API_KEY: z.string().min(16),
   PROWLARR_URL: z.string().url(),
   PROWLARR_API_KEY: z.string().min(8),
-  PROWLARR_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
-  PROWLARR_MAX_CONCURRENCY: z.coerce.number().int().positive().default(3),
+  PROWLARR_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
+  PROWLARR_MAX_CONCURRENCY: z.coerce.number().int().positive().default(2),
   PROWLARR_SONARR_URL: z.string().url().optional(),
   ALIAS_DATA_DIR: z.string().default("data/aliases"),
   MAX_TITLES: z.coerce.number().int().positive().default(3),
@@ -20,7 +20,8 @@ export type Env = z.infer<typeof EnvSchema>;
 let cached: Env | null = null;
 
 export function getEnv(): Env {
-  if (cached) return cached;
+  // next dev may hot-reload .env.local; avoid sticky stale values in development
+  if (cached && process.env.NODE_ENV === "production") return cached;
   const parsed = EnvSchema.safeParse(process.env);
   if (!parsed.success) {
     throw new Error(`Invalid env: ${parsed.error.message}`);

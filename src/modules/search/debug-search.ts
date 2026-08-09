@@ -1,6 +1,7 @@
 import { getAppRuntime } from "@/modules/app/runtime";
 import { deduplicateResults } from "@/modules/search/deduplicator";
 import { generateQueries } from "@/modules/search/query-generator";
+import { filterRelevantResults } from "@/modules/search/relevance";
 import type { SearchResult } from "@/modules/search/types";
 
 export interface DebugSearchInput {
@@ -18,11 +19,13 @@ export interface DebugSearchOutput {
   };
   titles: string[];
   queries: string[];
+  prowlarrReachable: boolean;
   resultCount: number;
   deduplicatedCount: number;
   results: Array<
     Pick<SearchResult, "title" | "indexerName" | "size" | "seeders" | "guid">
   >;
+  hint?: string;
 }
 
 export async function runDebugSearch(
@@ -49,14 +52,23 @@ export async function runDebugSearch(
     maxQueries: runtime.env.MAX_PROWLARR_QUERIES,
   });
 
+  const prowlarrReachable = await runtime.prowlarr.ping();
   const batches = await Promise.all(
     queries.map((query) => runtime.prowlarr.search(query))
   );
   const raw = batches.flat();
-  const deduped = deduplicateResults(raw).slice(
-    0,
-    runtime.env.SEARCH_RESULT_LIMIT
-  );
+  const deduped = filterRelevantResults(
+    deduplicateResults(raw),
+    titles
+  ).slice(0, runtime.env.SEARCH_RESULT_LIMIT);
+
+  let hint: string | undefined;
+  if (!prowlarrReachable) {
+    hint =
+      "Prowlarr 不可达。请在 .env.local 配置真实的 PROWLARR_URL / PROWLARR_API_KEY，并确保本机可访问该地址后重启 pnpm dev。";
+  } else if (deduped.length === 0) {
+    hint = "Prowlarr 可达，但本次查询无结果。可换季集或检查 Indexer 是否启用。";
+  }
 
   return {
     media: {
@@ -66,6 +78,7 @@ export async function runDebugSearch(
     },
     titles,
     queries,
+    prowlarrReachable,
     resultCount: raw.length,
     deduplicatedCount: deduped.length,
     results: deduped.slice(0, 20).map((r) => ({
@@ -75,6 +88,7 @@ export async function runDebugSearch(
       seeders: r.seeders,
       guid: r.guid,
     })),
+    hint,
   };
 }
 
