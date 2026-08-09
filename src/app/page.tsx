@@ -1,12 +1,8 @@
 import Link from "next/link";
-import { getHealthPayload } from "@/modules/app/health";
+import { HealthPanel } from "./components/health-panel";
 import { Shell, SiteNav } from "./components/site-chrome";
 
-export const dynamic = "force-dynamic";
-
-export default async function HomePage() {
-  const health = await getHealthPayload();
-
+export default function HomePage() {
   return (
     <Shell>
       <SiteNav active="home" />
@@ -27,35 +23,7 @@ export default async function HomePage() {
       </section>
 
       <div className="stack">
-        <section className="panel">
-          <h2>运行状态</h2>
-          <div className="status-grid">
-            <div className="status-item">
-              <span className="label">Service</span>
-              <span className={`value ${health.status === "ok" ? "ok" : "bad"}`}>
-                {health.status}
-              </span>
-            </div>
-            <div className="status-item">
-              <span className="label">Prowlarr</span>
-              <span
-                className={`value ${
-                  health.prowlarr === "reachable" ? "ok" : "bad"
-                }`}
-              >
-                {health.prowlarr}
-              </span>
-            </div>
-            <div className="status-item">
-              <span className="label">Runtime</span>
-              <span className="value">{health.runtime}</span>
-            </div>
-            <div className="status-item">
-              <span className="label">Version</span>
-              <span className="value">{health.version}</span>
-            </div>
-          </div>
-        </section>
+        <HealthPanel />
 
         <section className="panel">
           <h2>Sonarr 接入</h2>
