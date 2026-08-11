@@ -1,4 +1,4 @@
-import { loadAliasarrConfig } from '@/services/config'
+import { customHeadersRecord, loadAliasarrConfig } from '@/services/config'
 import { createProwlarrClient } from '@/services/prowlarr/client'
 import { getEnv } from '@/utils/env'
 
@@ -21,6 +21,7 @@ export async function getHealthPayload(): Promise<HealthPayload> {
       baseUrl: prowlarrUrl,
       apiKey: stored.secrets.prowlarrApiKey,
       timeoutMs: Math.min(env.PROWLARR_TIMEOUT_MS, 3000),
+      headers: customHeadersRecord(stored.secrets.prowlarrHeaders),
     })
     prowlarr = (await client.ping()) ? 'reachable' : 'unreachable'
   } catch {

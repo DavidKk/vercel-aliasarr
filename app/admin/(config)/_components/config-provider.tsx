@@ -3,14 +3,31 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react'
 
 import { useNotification } from '@/components/ui'
-import type { AliasarrConfig, AliasarrSecretName, AliasarrSecretStatus } from '@/services/config'
+import type { AliasarrConfig, AliasarrSecretStatus, AliasarrStringConnection, AliasarrStringSecretName, CustomHeaderSecretName } from '@/services/config'
 
+import { type CustomHeaderEditorRow, rowsFromHeaderNames, toHeaderDrafts } from './custom-headers-editor'
 import type { ApiEnvelope } from './types'
 
 export type ConfigSection = 'services' | 'indexers' | 'applications'
 
+type CustomHeadersState = Record<CustomHeaderSecretName, CustomHeaderEditorRow[]>
+
+const emptyCustomHeaders = (): CustomHeadersState => ({
+  prowlarrHeaders: [],
+  jackettHeaders: [],
+  sonarrHeaders: [],
+  radarrHeaders: [],
+})
+
+const sectionHeaderSecrets: Record<ConfigSection, CustomHeaderSecretName[]> = {
+  services: [],
+  indexers: ['prowlarrHeaders', 'jackettHeaders'],
+  applications: ['sonarrHeaders', 'radarrHeaders'],
+}
+
 interface ConfigContextValue {
   config: AliasarrConfig | null
+  customHeaders: CustomHeadersState
   encrypted: boolean
   error: string | null
   loading: boolean
@@ -18,7 +35,7 @@ interface ConfigContextValue {
   revision: string | null
   saving: boolean
   secretStatus: AliasarrSecretStatus | null
-  secretUpdates: Partial<Record<AliasarrSecretName, string>>
+  secretUpdates: Partial<Record<AliasarrStringSecretName, string>>
   storage: 'local-file' | 'vercel-kv'
   storageConfigured: boolean
   load(): Promise<void>
@@ -26,8 +43,9 @@ interface ConfigContextValue {
   setError(message: string | null): void
   setMessage(message: string | null): void
   updateConfig(updater: (current: AliasarrConfig) => AliasarrConfig): void
-  updateConnection(name: keyof AliasarrConfig['connections'], value: string): void
-  updateSecret(name: AliasarrSecretName, value: string): void
+  updateConnection(name: AliasarrStringConnection, value: string): void
+  updateCustomHeaders(name: CustomHeaderSecretName, rows: CustomHeaderEditorRow[]): void
+  updateSecret(name: AliasarrStringSecretName, value: string): void
 }
 
 const ConfigContext = createContext<ConfigContextValue | null>(null)
@@ -40,7 +58,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const [storage, setStorage] = useState<'local-file' | 'vercel-kv'>('local-file')
   const [encrypted, setEncrypted] = useState(false)
   const [secretStatus, setSecretStatus] = useState<AliasarrSecretStatus | null>(null)
-  const [secretUpdates, setSecretUpdates] = useState<Partial<Record<AliasarrSecretName, string>>>({})
+  const [secretUpdates, setSecretUpdates] = useState<Partial<Record<AliasarrStringSecretName, string>>>({})
+  const [customHeaders, setCustomHeaders] = useState<CustomHeadersState>(emptyCustomHeaders)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessageState] = useState<string | null>(null)
@@ -74,6 +93,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
         storage: 'local-file' | 'vercel-kv'
         encrypted: boolean
         secretStatus: AliasarrSecretStatus
+        customHeaderNames: Record<CustomHeaderSecretName, string[]>
       }>
       if (!response.ok || json.code !== 0) throw new Error(json.message || 'Configuration request failed')
       setConfig(json.data.config)
@@ -83,6 +103,13 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       setEncrypted(json.data.encrypted)
       setSecretStatus(json.data.secretStatus)
       setSecretUpdates({})
+      const names = json.data.customHeaderNames
+      setCustomHeaders({
+        prowlarrHeaders: rowsFromHeaderNames(names?.prowlarrHeaders ?? []),
+        jackettHeaders: rowsFromHeaderNames(names?.jackettHeaders ?? []),
+        sonarrHeaders: rowsFromHeaderNames(names?.sonarrHeaders ?? []),
+        radarrHeaders: rowsFromHeaderNames(names?.radarrHeaders ?? []),
+      })
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Failed to load configuration')
     } finally {
@@ -99,17 +126,40 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     setMessageState(null)
   }
 
-  function updateConnection(name: keyof AliasarrConfig['connections'], value: string) {
+  function updateConnection(name: AliasarrStringConnection, value: string) {
     updateConfig((current) => ({ ...current, connections: { ...current.connections, [name]: value } }))
   }
 
-  function updateSecret(name: AliasarrSecretName, value: string) {
+  function updateSecret(name: AliasarrStringSecretName, value: string) {
     setSecretUpdates((current) => ({ ...current, [name]: value }))
     setMessageState(null)
   }
 
+  function updateCustomHeaders(name: CustomHeaderSecretName, rows: CustomHeaderEditorRow[]) {
+    setCustomHeaders((current) => ({ ...current, [name]: rows }))
+    setMessageState(null)
+  }
+
+  function secretsPayload(section: ConfigSection) {
+    const headers = Object.fromEntries(sectionHeaderSecrets[section].map((name) => [name, toHeaderDrafts(customHeaders[name])]))
+    return { ...secretUpdates, ...headers }
+  }
+
   async function save(section: ConfigSection) {
     if (!config) return
+    for (const name of sectionHeaderSecrets[section]) {
+      const seen = new Set<string>()
+      for (const row of customHeaders[name]) {
+        const key = row.name.trim().toLowerCase()
+        if (!key) continue
+        if (seen.has(key)) {
+          setError(`Duplicate custom header "${row.name.trim()}"`)
+          return
+        }
+        seen.add(key)
+      }
+    }
+
     setSaving(true)
     setErrorState(null)
     setMessageState(null)
@@ -117,7 +167,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       const response = await fetch('/api/config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config, secrets: secretUpdates, revision, section }),
+        body: JSON.stringify({ config, secrets: secretsPayload(section), revision, section }),
       })
       const json = (await response.json()) as ApiEnvelope<{ revision: string | null }>
       if (!response.ok || json.code !== 0) throw new Error(json.message || 'Save failed')
@@ -134,6 +184,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 
   const value: ConfigContextValue = {
     config,
+    customHeaders,
     encrypted,
     error,
     loading,
@@ -150,6 +201,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     setMessage,
     updateConfig,
     updateConnection,
+    updateCustomHeaders,
     updateSecret,
   }
 

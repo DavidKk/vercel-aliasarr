@@ -10,7 +10,10 @@ import {
   AliasarrConfigSchema,
   type AliasarrSecretName,
   AliasarrSecretsSchema,
+  type AliasarrSecretUpdates,
   ConfigRevisionConflictError,
+  CustomHeaderDraftSchema,
+  customHeaderNames,
   loadAliasarrConfig,
   mergeSecretUpdates,
   saveAliasarrConfig,
@@ -18,9 +21,20 @@ import {
 
 export const runtime = 'nodejs'
 
-const SecretUpdatesSchema = AliasarrSecretsSchema.partial().extend({
-  torznabApiKey: z.string().min(16).nullable().optional(),
-})
+const SecretUpdatesSchema = AliasarrSecretsSchema.partial()
+  .omit({
+    prowlarrHeaders: true,
+    jackettHeaders: true,
+    sonarrHeaders: true,
+    radarrHeaders: true,
+  })
+  .extend({
+    torznabApiKey: z.string().min(16).nullable().optional(),
+    prowlarrHeaders: z.array(CustomHeaderDraftSchema).optional(),
+    jackettHeaders: z.array(CustomHeaderDraftSchema).optional(),
+    sonarrHeaders: z.array(CustomHeaderDraftSchema).optional(),
+    radarrHeaders: z.array(CustomHeaderDraftSchema).optional(),
+  })
 
 const ConfigSectionSchema = z.enum(['services', 'indexers', 'applications'])
 type ConfigSection = z.infer<typeof ConfigSectionSchema>
@@ -33,23 +47,22 @@ const connectionNames: Record<ConfigSection, Array<keyof AliasarrConfig['connect
 
 const secretNames: Record<ConfigSection, AliasarrSecretName[]> = {
   services: ['torznabApiKey', 'gistToken', 'tmdbApiKey', 'bangumiAccessToken'],
-  indexers: ['prowlarrApiKey', 'jackettApiKey'],
-  applications: ['sonarrApiKey', 'radarrApiKey'],
+  indexers: ['prowlarrApiKey', 'jackettApiKey', 'prowlarrHeaders', 'jackettHeaders'],
+  applications: ['sonarrApiKey', 'radarrApiKey', 'sonarrHeaders', 'radarrHeaders'],
 }
 
 function mergeSectionConfig(current: AliasarrConfig, incoming: AliasarrConfig, section: ConfigSection): AliasarrConfig {
-  const connections = { ...current.connections }
-  for (const name of connectionNames[section]) connections[name] = incoming.connections[name]
+  const patch = Object.fromEntries(connectionNames[section].map((name) => [name, incoming.connections[name]])) as Partial<AliasarrConfig['connections']>
   return {
     ...current,
-    connections,
+    connections: { ...current.connections, ...patch },
     indexers: section === 'indexers' ? incoming.indexers : current.indexers,
   }
 }
 
-function sectionSecretUpdates(updates: z.infer<typeof SecretUpdatesSchema>, section: ConfigSection): Partial<Record<AliasarrSecretName, string | null | undefined>> {
+function sectionSecretUpdates(updates: z.infer<typeof SecretUpdatesSchema>, section: ConfigSection): AliasarrSecretUpdates {
   const allowed = new Set<AliasarrSecretName>(secretNames[section])
-  return Object.fromEntries(Object.entries(updates).filter(([name]) => allowed.has(name as AliasarrSecretName)))
+  return Object.fromEntries(Object.entries(updates).filter(([name]) => allowed.has(name as AliasarrSecretName))) as AliasarrSecretUpdates
 }
 
 export const GET = api(
@@ -58,6 +71,7 @@ export const GET = api(
     return jsonSuccess({
       config: stored.config,
       secretStatus: stored.secretStatus,
+      customHeaderNames: customHeaderNames(stored.secrets),
       configured: stored.configured,
       exists: stored.exists,
       revision: stored.revision,

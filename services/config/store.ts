@@ -3,7 +3,6 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 import { Redis } from '@upstash/redis'
-import { z } from 'zod'
 
 import { getEnv } from '@/utils/env'
 
@@ -16,17 +15,16 @@ import {
   type AliasarrSecrets,
   AliasarrSecretsSchema,
   aliasarrSecretStatus,
+  type AliasarrSecretUpdates,
   defaultAliasarrConfig,
   defaultAliasarrSecrets,
+  isCustomHeaderSecretName,
+  mergeHeaderDrafts,
+  migrateLegacyConnectionHeaders,
 } from './schema'
 
 export const ALIASARR_CONFIG_KEY = 'aliasarr:config:v1'
 export const LOCAL_CONFIG_FILE = '.aliasarr/config.json'
-
-const EncryptedBundleSchema = z.object({
-  connections: AliasarrConnectionsSchema,
-  secrets: AliasarrSecretsSchema,
-})
 
 interface ConfigRecord {
   revision: string
@@ -134,10 +132,12 @@ function resolveRecord(record: ConfigRecord | null): { config: AliasarrConfig; s
 
   const encryptionKey = getEnv().CONFIG_ENCRYPTION_KEY
   if (!encryptionKey) throw new Error('CONFIG_ENCRYPTION_KEY is required to decrypt Aliasarr configuration')
-  const bundle = EncryptedBundleSchema.parse(decryptConfigPayload(record.encryptedConfig, encryptionKey))
+  const raw = decryptConfigPayload<{ connections?: unknown; secrets?: unknown }>(record.encryptedConfig, encryptionKey)
+  const secrets = migrateLegacyConnectionHeaders(raw.connections, AliasarrSecretsSchema.parse(raw.secrets ?? {}))
+  const connections = AliasarrConnectionsSchema.parse(raw.connections ?? {})
   return {
-    config: { ...record.config, connections: bundle.connections },
-    secrets: bundle.secrets,
+    config: { ...record.config, connections },
+    secrets,
     encrypted: true,
   }
 }
@@ -234,10 +234,17 @@ export async function saveAliasarrConfig(config: AliasarrConfig, secrets: Aliasa
   return { revision: record.revision }
 }
 
-export function mergeSecretUpdates(current: AliasarrSecrets, updates: Partial<Record<keyof AliasarrSecrets, string | null | undefined>>): AliasarrSecrets {
-  const next = { ...current }
-  for (const [name, value] of Object.entries(updates) as Array<[keyof AliasarrSecrets, string | null | undefined]>) {
-    if (value === undefined || value === '') continue
+export function mergeSecretUpdates(current: AliasarrSecrets, updates: AliasarrSecretUpdates): AliasarrSecrets {
+  const next: AliasarrSecrets = { ...current }
+  for (const [name, value] of Object.entries(updates) as Array<[keyof AliasarrSecrets, AliasarrSecretUpdates[keyof AliasarrSecretUpdates]]>) {
+    if (value === undefined) continue
+    if (isCustomHeaderSecretName(name)) {
+      if (!Array.isArray(value)) continue
+      next[name] = mergeHeaderDrafts(current[name], value)
+      continue
+    }
+    if (typeof value !== 'string' && value !== null) continue
+    if (value === '') continue
     next[name] = value === null ? '' : value
   }
   return AliasarrSecretsSchema.parse(next)

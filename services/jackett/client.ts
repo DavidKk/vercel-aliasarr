@@ -1,5 +1,6 @@
 import { convert } from 'xmlbuilder2'
 
+import { cloudflareAccessFailureMessage, looksLikeCloudflareAccess } from '@/services/http/cloudflare-access'
 import type { SearchResult } from '@/services/search/types'
 import { logger } from '@/utils/logger'
 
@@ -7,6 +8,8 @@ export interface JackettClientConfig {
   baseUrl: string
   apiKey: string
   timeoutMs: number
+  /** Extra request headers (Cloudflare Access, reverse-proxy auth, …). */
+  headers?: Record<string, string>
 }
 
 export interface JackettIndexer {
@@ -24,6 +27,8 @@ export interface JackettSearchOptions {
 export interface JackettClient {
   search(query: string, options?: JackettSearchOptions): Promise<SearchResult[]>
   ping(): Promise<boolean>
+  /** Throws a detailed error when Cloudflare Access or auth fails. */
+  probe?(): Promise<void>
   listIndexers(): Promise<JackettIndexer[]>
 }
 
@@ -140,6 +145,7 @@ function parseIndexerList(xml: string): JackettIndexer[] {
 
 export function createJackettClient(config: JackettClientConfig): JackettClient {
   const base = config.baseUrl.replace(/\/$/, '')
+  const customHeaderNames = Object.keys(config.headers ?? {})
 
   function apiUrl(indexerId: string): URL {
     return new URL(`${base}/api/v2.0/indexers/${encodeURIComponent(indexerId)}/results/torznab/api`)
@@ -151,8 +157,21 @@ export function createJackettClient(config: JackettClientConfig): JackettClient 
     for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value)
     const timeout = AbortSignal.timeout(config.timeoutMs)
     const combined = signal ? AbortSignal.any([signal, timeout]) : timeout
-    const response = await fetch(url, { signal: combined })
-    if (!response.ok) throw new Error(`Jackett request failed (${response.status})`)
+    const response = await fetch(url, {
+      headers: config.headers,
+      redirect: 'manual',
+      signal: combined,
+    })
+    if (response.status >= 300 && response.status < 400) {
+      throw new Error(cloudflareAccessFailureMessage('Jackett', response.status, customHeaderNames))
+    }
+    if (!response.ok) {
+      const body = await response.text()
+      if (looksLikeCloudflareAccess(response.status, response, body)) {
+        throw new Error(cloudflareAccessFailureMessage('Jackett', response.status, customHeaderNames))
+      }
+      throw new Error(`Jackett request failed (${response.status})`)
+    }
     const xml = await response.text()
     const apiError = parseApiError(xml)
     if (apiError) throw new JackettApiError(apiError.code, apiError.description)
@@ -177,9 +196,13 @@ export function createJackettClient(config: JackettClientConfig): JackettClient 
     return batches.flat()
   }
 
+  async function probe(): Promise<void> {
+    await request('all', { t: 'caps' }, AbortSignal.timeout(Math.min(config.timeoutMs, 3000)))
+  }
+
   async function ping(): Promise<boolean> {
     try {
-      await request('all', { t: 'caps' }, AbortSignal.timeout(Math.min(config.timeoutMs, 3000)))
+      await probe()
       return true
     } catch {
       return false
@@ -191,7 +214,7 @@ export function createJackettClient(config: JackettClientConfig): JackettClient 
     return parseIndexerList(xml)
   }
 
-  return { search, ping, listIndexers }
+  return { search, ping, probe, listIndexers }
 }
 
 export const __jackettTestUtils = { parseApiError, parseIndexerList, parseSearchResults }

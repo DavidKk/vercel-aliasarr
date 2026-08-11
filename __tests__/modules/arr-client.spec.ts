@@ -78,4 +78,74 @@ describe('*arr application client', () => {
 
     await expect(client.sync({ baseUrl: 'http://aliasarr/api/torznab', apiKey: 'aliasarr-key' })).rejects.toThrow('Unable to connect to indexer')
   })
+
+  it('sends custom headers with X-Api-Key on every request', async () => {
+    const fetchMock = jest.fn<Promise<Response>, [RequestInfo | URL, RequestInit?]>(async () => Response.json([]))
+    stubGlobal('fetch', fetchMock)
+    const client = createArrClient({
+      application: 'sonarr',
+      baseUrl: 'http://sonarr:8989',
+      apiKey: 'sonarr-key',
+      headers: { 'CF-Access-Client-Id': 'id', 'X-Api-Key': 'spoof' },
+    })
+
+    await expect(client.status()).resolves.toEqual({ reachable: true, installed: false })
+    expect(fetchMock.mock.calls[0]?.[1]).toEqual(
+      expect.objectContaining({
+        redirect: 'manual',
+        headers: expect.objectContaining({
+          'CF-Access-Client-Id': 'id',
+          'X-Api-Key': 'sonarr-key',
+        }),
+      })
+    )
+    expect((fetchMock.mock.calls[0]?.[1] as RequestInit | undefined)?.headers).not.toEqual(expect.objectContaining({ 'Content-Type': 'application/json' }))
+  })
+
+  it('surfaces Cloudflare Access blocks instead of a generic unreachable error', async () => {
+    stubGlobal(
+      'fetch',
+      jest.fn(async () => new Response('Login required', { status: 302, headers: { 'cf-ray': 'abc', location: 'https://login.cloudflareaccess.com' } }))
+    )
+    const client = createArrClient({
+      application: 'radarr',
+      baseUrl: 'https://radarr.example.com',
+      apiKey: 'radarr-key',
+    })
+
+    await expect(client.ping()).rejects.toThrow(/No custom headers were sent/i)
+    await expect(client.status()).resolves.toEqual({ reachable: false, installed: false })
+  })
+
+  it('does not treat a plain API-key 401 as Cloudflare Access', async () => {
+    stubGlobal(
+      'fetch',
+      jest.fn(async () => new Response('Unauthorized', { status: 401 }))
+    )
+    const client = createArrClient({
+      application: 'radarr',
+      baseUrl: 'https://radarr.example.com',
+      apiKey: 'wrong',
+    })
+
+    await expect(client.ping()).rejects.toThrow(/radarr API 401/i)
+  })
+
+  it('reports when Access headers were sent but Cloudflare still blocked', async () => {
+    stubGlobal(
+      'fetch',
+      jest.fn(async () => new Response('Forbidden', { status: 403, headers: { 'cf-ray': 'abc' } }))
+    )
+    const client = createArrClient({
+      application: 'radarr',
+      baseUrl: 'https://radarr.example.com',
+      apiKey: 'radarr-key',
+      headers: {
+        'CF-Access-Client-Id': 'id.access',
+        'CF-Access-Client-Secret': 'secret',
+      },
+    })
+
+    await expect(client.ping()).rejects.toThrow(/CF-Access-Client-Id, CF-Access-Client-Secret/i)
+  })
 })

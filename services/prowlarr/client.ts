@@ -1,3 +1,4 @@
+import { cloudflareAccessFailureMessage, looksLikeCloudflareAccess } from '@/services/http/cloudflare-access'
 import type { SearchResult } from '@/services/search/types'
 import { logger } from '@/utils/logger'
 
@@ -9,6 +10,8 @@ export interface ProwlarrClientConfig {
   apiKey: string
   timeoutMs: number
   mapOptions?: MapOptions
+  /** Extra request headers (Cloudflare Access, reverse-proxy auth, …). */
+  headers?: Record<string, string>
 }
 
 export interface ProwlarrSearchOptions {
@@ -20,6 +23,8 @@ export interface ProwlarrSearchOptions {
 export interface ProwlarrClient {
   search(query: string, options?: ProwlarrSearchOptions): Promise<SearchResult[]>
   ping(): Promise<boolean>
+  /** Throws a detailed error when Cloudflare Access or auth fails. */
+  probe?(): Promise<void>
   listIndexers(): Promise<ProwlarrIndexer[]>
 }
 
@@ -35,6 +40,29 @@ export interface ProwlarrIndexer {
 
 export function createProwlarrClient(config: ProwlarrClientConfig): ProwlarrClient {
   const base = config.baseUrl.replace(/\/$/, '')
+  const customHeaderNames = Object.keys(config.headers ?? {})
+  const requestHeaders = { ...(config.headers ?? {}), 'X-Api-Key': config.apiKey }
+
+  async function upstream(url: string | URL, init: RequestInit = {}): Promise<Response> {
+    return fetch(url, {
+      ...init,
+      headers: { ...requestHeaders, ...init.headers },
+      redirect: 'manual',
+      signal: init.signal,
+    })
+  }
+
+  function assertReachable(response: Response, body = ''): void {
+    if (response.status >= 300 && response.status < 400) {
+      throw new Error(cloudflareAccessFailureMessage('Prowlarr', response.status, customHeaderNames))
+    }
+    if (!response.ok) {
+      if (looksLikeCloudflareAccess(response.status, response, body)) {
+        throw new Error(cloudflareAccessFailureMessage('Prowlarr', response.status, customHeaderNames))
+      }
+      throw new Error(`Prowlarr returned HTTP ${response.status}`)
+    }
+  }
 
   async function search(query: string, options: ProwlarrSearchOptions = {}): Promise<SearchResult[]> {
     const url = new URL(`${base}/api/v1/search`)
@@ -51,10 +79,11 @@ export function createProwlarrClient(config: ProwlarrClientConfig): ProwlarrClie
     const combined = options.signal != null ? AbortSignal.any([options.signal, timeout]) : timeout
 
     try {
-      const res = await fetch(url, {
-        headers: { 'X-Api-Key': config.apiKey },
-        signal: combined,
-      })
+      const res = await upstream(url, { signal: combined })
+      if (res.status >= 300 && res.status < 400) {
+        logger.warn({ status: res.status, host: url.host, path: url.pathname }, 'prowlarr search blocked by redirect')
+        return []
+      }
       if (!res.ok) {
         logger.warn(
           {
@@ -84,13 +113,18 @@ export function createProwlarrClient(config: ProwlarrClientConfig): ProwlarrClie
     }
   }
 
+  async function probe(): Promise<void> {
+    const res = await upstream(`${base}/api/v1/system/status`, {
+      signal: AbortSignal.timeout(Math.min(config.timeoutMs, 3000)),
+    })
+    const body = res.ok ? '' : await res.text()
+    assertReachable(res, body)
+  }
+
   async function ping(): Promise<boolean> {
     try {
-      const res = await fetch(`${base}/api/v1/system/status`, {
-        headers: { 'X-Api-Key': config.apiKey },
-        signal: AbortSignal.timeout(Math.min(config.timeoutMs, 3000)),
-      })
-      return res.ok
+      await probe()
+      return true
     } catch {
       return false
     }
@@ -98,11 +132,19 @@ export function createProwlarrClient(config: ProwlarrClientConfig): ProwlarrClie
 
   async function listIndexers(): Promise<ProwlarrIndexer[]> {
     const url = `${base}/api/v1/indexer`
-    const res = await fetch(url, {
-      headers: { 'X-Api-Key': config.apiKey },
+    const res = await upstream(url, {
       signal: AbortSignal.timeout(Math.min(config.timeoutMs, 10000)),
     })
-    if (!res.ok) throw new Error(`Prowlarr indexer discovery failed (${res.status})`)
+    if (res.status >= 300 && res.status < 400) {
+      throw new Error(cloudflareAccessFailureMessage('Prowlarr', res.status, customHeaderNames))
+    }
+    if (!res.ok) {
+      const body = await res.text()
+      if (looksLikeCloudflareAccess(res.status, res, body)) {
+        throw new Error(cloudflareAccessFailureMessage('Prowlarr', res.status, customHeaderNames))
+      }
+      throw new Error(`Prowlarr indexer discovery failed (${res.status})`)
+    }
     const data = (await res.json()) as Array<Partial<ProwlarrIndexer> & { Language?: string }>
     if (!Array.isArray(data)) return []
     return data
@@ -118,5 +160,5 @@ export function createProwlarrClient(config: ProwlarrClientConfig): ProwlarrClie
       .sort((a, b) => a.name.localeCompare(b.name))
   }
 
-  return { search, ping, listIndexers }
+  return { search, ping, probe, listIndexers }
 }

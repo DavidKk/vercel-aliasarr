@@ -7,6 +7,7 @@ import { effectiveSearchLanguages, normalizeLanguageCode, toIndexerLocale } from
 
 import { useConfigForm } from '../_components/config-provider'
 import { ConnectionTestButton } from '../_components/connection-test-button'
+import { CustomHeadersEditor } from '../_components/custom-headers-editor'
 import { IndexerChoice } from '../_components/indexer-choice'
 import { languageOptions, pickLanguageValues } from '../_components/indexer-language'
 import { IndexerListPanel } from '../_components/indexer-list-panel'
@@ -16,7 +17,7 @@ import type { ApiEnvelope, JackettIndexer, ProwlarrIndexer } from '../_component
 import { ConfigCard, ConfigPage, ConnectionInput, SecretInput } from '../_components/ui'
 
 export default function IndexersConfigPage() {
-  const { config, revision, secretStatus, secretUpdates, setError, updateConfig, updateConnection, updateSecret } = useConfigForm()
+  const { config, customHeaders, revision, secretStatus, secretUpdates, setError, updateConfig, updateConnection, updateCustomHeaders, updateSecret } = useConfigForm()
   const [prowlarrConfigured, setProwlarrConfigured] = useState(false)
   const [prowlarrIndexers, setProwlarrIndexers] = useState<ProwlarrIndexer[]>([])
   const [prowlarrError, setProwlarrError] = useState<string | null>(null)
@@ -193,6 +194,7 @@ export default function IndexersConfigPage() {
               value={form.connections.prowlarrDownloadUrl}
               onChange={(value) => updateConnection('prowlarrDownloadUrl', value)}
             />
+            <CustomHeadersEditor value={customHeaders.prowlarrHeaders} onChange={(rows) => updateCustomHeaders('prowlarrHeaders', rows)} />
           </div>
         }
       >
@@ -233,6 +235,7 @@ export default function IndexersConfigPage() {
               value={secretUpdates.jackettApiKey ?? ''}
               onChange={(value) => updateSecret('jackettApiKey', value)}
             />
+            <CustomHeadersEditor value={customHeaders.jackettHeaders} onChange={(rows) => updateCustomHeaders('jackettHeaders', rows)} />
           </div>
         }
       >

@@ -78,4 +78,23 @@ describe('Jackett client', () => {
     await expect(client.listIndexers()).rejects.toEqual(expect.objectContaining<Partial<JackettApiError>>({ code: '100', description: 'Invalid API Key' }))
     await expect(client.ping()).resolves.toBe(false)
   })
+
+  it('forwards custom request headers', async () => {
+    const fetchMock = jest.fn<Promise<Response>, [RequestInfo | URL, RequestInit?]>(async () => new Response(indexerXml, { status: 200 }))
+    stubGlobal('fetch', fetchMock)
+    const client = createJackettClient({
+      baseUrl: 'http://jackett:9117',
+      apiKey: 'secret',
+      timeoutMs: 1000,
+      headers: { 'CF-Access-Client-Secret': 'cf-secret' },
+    })
+
+    await client.listIndexers()
+    expect(fetchMock.mock.calls[0]?.[1]).toEqual(
+      expect.objectContaining({
+        headers: { 'CF-Access-Client-Secret': 'cf-secret' },
+        redirect: 'manual',
+      })
+    )
+  })
 })

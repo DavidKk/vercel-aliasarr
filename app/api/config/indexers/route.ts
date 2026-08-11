@@ -1,7 +1,7 @@
 import { api } from '@/initializer/controller'
 import { jsonSuccess } from '@/initializer/response'
 import { withAuthHandler } from '@/initializer/wrapper'
-import { loadAliasarrConfig } from '@/services/config'
+import { customHeadersRecord, loadAliasarrConfig } from '@/services/config'
 import { createJackettClient } from '@/services/jackett'
 import { createProwlarrClient } from '@/services/prowlarr/client'
 import { getEnv } from '@/utils/env'
@@ -20,10 +20,18 @@ export const GET = api(
             baseUrl: prowlarrUrl,
             apiKey: stored.secrets.prowlarrApiKey,
             timeoutMs: env.PROWLARR_TIMEOUT_MS,
+            headers: customHeadersRecord(stored.secrets.prowlarrHeaders),
           })
         : null
     const jackett =
-      jackettUrl && stored.secrets.jackettApiKey ? createJackettClient({ baseUrl: jackettUrl, apiKey: stored.secrets.jackettApiKey, timeoutMs: env.JACKETT_TIMEOUT_MS }) : null
+      jackettUrl && stored.secrets.jackettApiKey
+        ? createJackettClient({
+            baseUrl: jackettUrl,
+            apiKey: stored.secrets.jackettApiKey,
+            timeoutMs: env.JACKETT_TIMEOUT_MS,
+            headers: customHeadersRecord(stored.secrets.jackettHeaders),
+          })
+        : null
 
     const [prowlarrResult, jackettResult] = await Promise.allSettled([prowlarr?.listIndexers() ?? Promise.resolve([]), jackett?.listIndexers() ?? Promise.resolve([])])
 

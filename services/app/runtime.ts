@@ -1,5 +1,5 @@
 import { createMemoryCache, type MemoryCache } from '@/services/cache/memory-cache'
-import { type AliasarrSecrets, loadAliasarrConfig } from '@/services/config'
+import { type AliasarrSecrets, customHeadersRecord, loadAliasarrConfig } from '@/services/config'
 import { createIndexerClient, type IndexerClient } from '@/services/indexers'
 import { effectiveSearchLanguages } from '@/services/indexers/languages'
 import { createJackettClient } from '@/services/jackett'
@@ -62,6 +62,7 @@ export async function getAppRuntime(): Promise<AppRuntime> {
           baseUrl: prowlarrUrl,
           apiKey: stored.secrets.prowlarrApiKey,
           timeoutMs: env.PROWLARR_TIMEOUT_MS,
+          headers: customHeadersRecord(stored.secrets.prowlarrHeaders),
           mapOptions: prowlarrDownloadUrl
             ? {
                 sonarrBaseUrl: prowlarrDownloadUrl,
@@ -78,7 +79,14 @@ export async function getAppRuntime(): Promise<AppRuntime> {
     gist,
   })
   const jackett =
-    jackettUrl && stored.secrets.jackettApiKey ? createJackettClient({ baseUrl: jackettUrl, apiKey: stored.secrets.jackettApiKey, timeoutMs: env.JACKETT_TIMEOUT_MS }) : undefined
+    jackettUrl && stored.secrets.jackettApiKey
+      ? createJackettClient({
+          baseUrl: jackettUrl,
+          apiKey: stored.secrets.jackettApiKey,
+          timeoutMs: env.JACKETT_TIMEOUT_MS,
+          headers: customHeadersRecord(stored.secrets.jackettHeaders),
+        })
+      : undefined
   const indexers = createIndexerClient({
     prowlarr,
     jackett,

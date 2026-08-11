@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { ApplicationStatusButton, ArrIndexerSyncRow } from '../_components/arr-indexer-sync-row'
 import { useConfigForm } from '../_components/config-provider'
+import { CustomHeadersEditor } from '../_components/custom-headers-editor'
 import { PageSaveBar } from '../_components/page-save-bar'
 import type { ApiEnvelope, ApplicationStatus } from '../_components/types'
 import { ConfigCard, ConfigPage, ConnectionInput, SecretInput } from '../_components/ui'
@@ -12,7 +13,7 @@ const applicationNames = ['sonarr', 'radarr'] as const
 type ApplicationName = (typeof applicationNames)[number]
 
 export default function ApplicationsConfigPage() {
-  const { config, revision, secretStatus, secretUpdates, setError, setMessage, updateConnection, updateSecret } = useConfigForm()
+  const { config, customHeaders, revision, secretStatus, secretUpdates, setError, setMessage, updateConnection, updateCustomHeaders, updateSecret } = useConfigForm()
   const [applications, setApplications] = useState<Record<'sonarr' | 'radarr', ApplicationStatus> | null>(null)
   const [aliasarrUrlConfigured, setAliasarrUrlConfigured] = useState(false)
   const [refreshing, setRefreshing] = useState<Record<ApplicationName, boolean>>({ sonarr: true, radarr: true })
@@ -75,6 +76,7 @@ export default function ApplicationsConfigPage() {
         const label = application === 'sonarr' ? 'Sonarr' : 'Radarr'
         const urlName = application === 'sonarr' ? 'sonarrUrl' : 'radarrUrl'
         const secretName = application === 'sonarr' ? 'sonarrApiKey' : 'radarrApiKey'
+        const headersName = application === 'sonarr' ? 'sonarrHeaders' : 'radarrHeaders'
         const disabledReason = refreshing[application]
           ? 'Checking connection…'
           : !status?.configured
@@ -112,6 +114,7 @@ export default function ApplicationsConfigPage() {
                 value={secretUpdates[secretName] ?? ''}
                 onChange={(value) => updateSecret(secretName, value)}
               />
+              <CustomHeadersEditor value={customHeaders[headersName]} onChange={(rows) => updateCustomHeaders(headersName, rows)} />
             </div>
             <ArrIndexerSyncRow
               application={application}

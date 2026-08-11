@@ -5,7 +5,7 @@ import { api } from '@/initializer/controller'
 import { jsonInvalidParameters, jsonSuccess, standardResponseError } from '@/initializer/response'
 import { withAuthHandler } from '@/initializer/wrapper'
 import { type ArrApplication, createArrClient } from '@/services/arr'
-import { type AliasarrConfig, type AliasarrSecrets, loadAliasarrConfig } from '@/services/config'
+import { type AliasarrConfig, type AliasarrSecrets, customHeadersRecord, loadAliasarrConfig } from '@/services/config'
 
 export const runtime = 'nodejs'
 
@@ -19,7 +19,12 @@ function applicationConfig(application: ArrApplication, config: AliasarrConfig, 
   const baseUrl = application === 'sonarr' ? config.connections.sonarrUrl : config.connections.radarrUrl
   const apiKey = application === 'sonarr' ? secrets.sonarrApiKey : secrets.radarrApiKey
   if (!baseUrl || !apiKey) return null
-  return { application, baseUrl, apiKey }
+  return {
+    application,
+    baseUrl,
+    apiKey,
+    headers: customHeadersRecord(application === 'sonarr' ? secrets.sonarrHeaders : secrets.radarrHeaders),
+  }
 }
 
 export const GET = api(
