@@ -9,29 +9,41 @@ import { BrandLockup } from '@/components/brand-lockup'
 import { BrandLogo } from '@/components/brand-logo'
 import { PageHeader } from '@/components/page-header'
 import { StatusDot } from '@/components/status-dot'
+import { useNotification } from '@/components/ui'
 
 const workspaceLinks = [
   { href: '/admin', label: 'Dashboard', hint: 'System overview', mark: '01' },
   { href: '/admin/probe', label: 'Search probe', hint: 'Test query expansion', mark: '02' },
   { href: '/admin/aliases', label: 'Alias library', hint: 'Manage source records', mark: '03' },
-  { href: '/admin/config', label: 'Configuration', hint: 'Indexers and applications', mark: '04' },
+  { href: '/admin/services', label: 'Services', hint: 'Gist, TMDB, Bangumi, API key', mark: '04' },
+  { href: '/admin/indexers', label: 'Indexers', hint: 'Prowlarr and Jackett', mark: '05' },
+  { href: '/admin/applications', label: 'Applications', hint: 'Sonarr and Radarr sync', mark: '06' },
 ] as const
+
+function resolveAdminPage(pathname: string): string {
+  if (pathname.startsWith('/admin/applications') || pathname.startsWith('/admin/config/applications')) return 'Applications'
+  if (pathname.startsWith('/admin/indexers') || pathname.startsWith('/admin/config/indexers')) return 'Indexers'
+  if (pathname.startsWith('/admin/services') || pathname.startsWith('/admin/config')) return 'Services'
+  if (pathname.startsWith('/admin/aliases')) return 'Alias library'
+  if (pathname.startsWith('/admin/probe')) return 'Search probe'
+  return 'Dashboard'
+}
 
 export function AdminChrome({ children, username }: { children: ReactNode; username?: string }) {
   const pathname = usePathname()
   const router = useRouter()
-  const currentPage = pathname.startsWith('/admin/config')
-    ? 'Configuration'
-    : pathname.startsWith('/admin/aliases')
-      ? 'Alias library'
-      : pathname.startsWith('/admin/probe')
-        ? 'Search probe'
-        : 'Dashboard'
+  const notification = useNotification()
+  const currentPage = resolveAdminPage(pathname)
 
   async function logout() {
-    await fetch('/api/auth', { method: 'DELETE' })
-    router.push('/login')
-    router.refresh()
+    try {
+      const response = await fetch('/api/auth', { method: 'DELETE' })
+      if (!response.ok) throw new Error('Sign out failed')
+      router.push('/login')
+      router.refresh()
+    } catch (error) {
+      notification.error(error instanceof Error ? error.message : 'Sign out failed')
+    }
   }
 
   return (
@@ -110,7 +122,7 @@ export function AdminChrome({ children, username }: { children: ReactNode; usern
         <header className="admin-header z-30 flex h-16 shrink-0 items-center justify-between border-b border-app-border/70 px-4 backdrop-blur-xl sm:px-5 lg:h-20 lg:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <Link href="/" className="shrink-0 lg:hidden" aria-label="Aliasarr home">
-              <BrandLogo height={32} className="rounded-md" />
+              <BrandLogo size={32} priority />
             </Link>
             <div className="min-w-0">
               <p className="truncate text-xs text-app-muted">

@@ -8,7 +8,7 @@
 4. Generate `CONFIG_ENCRYPTION_KEY`: `openssl rand -base64 32`; if this value is lost, stored connection config cannot be recovered
 5. Admin login: `ACCESS_USERNAME`, `ACCESS_PASSWORD`; production should set a high-entropy `JWT_SECRET` separately (if unset, `ACCESS_PASSWORD` is used for signing—**never** deploy without a secret)
 6. Optional Signet: `SIGNET_SDK_URL` (or `NEXT_PUBLIC_SIGNET_SDK_URL`). By default only `ACCESS_USERNAME` may log in; use `SIGNET_ALLOWED_USERS` for an explicit allowlist. When `ACCESS_2FA_SECRET` is enabled, both password login and Signet require TOTP (Signet SSO then step-up verification)
-7. After deploy, log in at `/admin/config`, enter URL, Torznab/API Key, Gist/TMDB/Bangumi credentials, and save
+7. After deploy, log in and open `/admin/services`, enter URL, Torznab/API Key, Gist/TMDB/Bangumi credentials, and save
 8. After the page shows `AES-256-GCM`, delete legacy service URL/API Key environment variables and redeploy; keep only Upstash, encryption key, and login bootstrap variables
 9. Search route `maxDuration` in Functions—see `vercel.json` (recommend ≥ 30s)
 
@@ -44,7 +44,7 @@ Same URL / API Path / API Key; Categories: `2000,2030,2040,2045`.
 
 ## Prowlarr / Jackett and Application Sync
 
-Configure and enable Prowlarr / Jackett separately at `/admin/config`; choose "all enabled" or specific Indexers. URL and API Key are stored as one AES-256-GCM encrypted connection bundle.
+Configure and enable Prowlarr / Jackett separately at `/admin/indexers`; choose "all enabled" or specific Indexers. URL and API Key are stored as one AES-256-GCM encrypted connection bundle.
 
 After configuring Sonarr / Radarr URL and API Key, install, update, or remove the Aliasarr Torznab Indexer on the same page via each app's `/api/v3` API—no manual entry required.
 

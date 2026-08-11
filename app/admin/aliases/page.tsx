@@ -5,22 +5,20 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { AdminPageHeader } from '@/components/admin-chrome'
 import { AdminCard } from '@/components/admin-layout'
-import { Button, Skeleton, Textarea } from '@/components/ui'
+import { Button, Skeleton, Textarea, useNotification } from '@/components/ui'
 
 export default function AdminAliasesPage() {
   const router = useRouter()
+  const notification = useNotification()
   const [files, setFiles] = useState<string[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [content, setContent] = useState('')
   const [revision, setRevision] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
   const loadList = useCallback(async () => {
     setLoading(true)
-    setError(null)
     try {
       const res = await fetch('/api/aliases')
       const json = await res.json()
@@ -33,11 +31,11 @@ export default function AdminAliasesPage() {
       }
       setFiles(json.data.files as string[])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load')
+      notification.error(err instanceof Error ? err.message : 'Failed to load')
     } finally {
       setLoading(false)
     }
-  }, [router])
+  }, [notification, router])
 
   useEffect(() => {
     void loadList()
@@ -45,8 +43,6 @@ export default function AdminAliasesPage() {
 
   async function openFile(path: string) {
     setSelected(path)
-    setMessage(null)
-    setError(null)
     try {
       const res = await fetch(`/api/aliases/${path}`)
       const json = await res.json()
@@ -54,15 +50,13 @@ export default function AdminAliasesPage() {
       setContent(json.data.content as string)
       setRevision(json.data.revision as string)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to read')
+      notification.error(err instanceof Error ? err.message : 'Failed to read')
     }
   }
 
   async function save() {
     if (!selected) return
     setSaving(true)
-    setError(null)
-    setMessage(null)
     try {
       const res = await fetch(`/api/aliases/${selected}`, {
         method: 'PUT',
@@ -72,10 +66,10 @@ export default function AdminAliasesPage() {
       const json = await res.json()
       if (!res.ok || json.code !== 0) throw new Error(json.message ?? 'Failed to save')
       setRevision(json.data.revision as string)
-      setMessage('Saved to Gist')
+      notification.success('Saved to Gist')
       await loadList()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save')
+      notification.error(err instanceof Error ? err.message : 'Failed to save')
     } finally {
       setSaving(false)
     }
@@ -96,13 +90,6 @@ export default function AdminAliasesPage() {
         <LibrarySummary label="Storage provider" value="GitHub Gist" />
         <LibrarySummary label="Document format" value="YAML" accent />
       </div>
-
-      {error ? (
-        <p role="alert" className="mb-4 rounded-xl border border-app-danger/20 bg-app-dangerSoft px-3 py-2.5 text-sm text-app-danger">
-          {error}
-        </p>
-      ) : null}
-      {message ? <p className="mb-4 rounded-xl border border-app-success/20 bg-app-successSoft px-3 py-2.5 text-sm text-app-success">{message}</p> : null}
 
       <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-[280px_minmax(0,1fr)]">
         <AdminCard className="ui-fade-up flex min-h-0 flex-col overflow-hidden">

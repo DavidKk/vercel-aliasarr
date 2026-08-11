@@ -1,6 +1,7 @@
 import { createMemoryCache, type MemoryCache } from '@/services/cache/memory-cache'
 import { type AliasarrSecrets, loadAliasarrConfig } from '@/services/config'
 import { createIndexerClient, type IndexerClient } from '@/services/indexers'
+import { effectiveSearchLanguages } from '@/services/indexers/languages'
 import { createJackettClient } from '@/services/jackett'
 import { buildIdentityFromTorznab } from '@/services/media/identity'
 import type { MediaTitles } from '@/services/media/media-schema'
@@ -30,9 +31,10 @@ export interface AppRuntime {
 let singleton: AppRuntime | null = null
 let envFingerprint: string | null = null
 
-function fingerprint(env: Env, configRevision: string | null): string {
+function fingerprint(env: Env, configRevision: string | null, languages: string[]): string {
   return [
     configRevision ?? '',
+    languages.join(','),
     env.PROWLARR_INDEXER_IDS?.join(',') ?? '',
     env.PROWLARR_TV_INDEXER_IDS?.join(',') ?? '',
     env.PROWLARR_MOVIE_INDEXER_IDS?.join(',') ?? '',
@@ -44,7 +46,8 @@ function fingerprint(env: Env, configRevision: string | null): string {
 export async function getAppRuntime(): Promise<AppRuntime> {
   const env = getEnv()
   const stored = await loadAliasarrConfig()
-  const fp = fingerprint(env, stored.revision)
+  const languages = effectiveSearchLanguages(stored.config.indexers.languages)
+  const fp = fingerprint(env, stored.revision, languages)
   if (singleton && envFingerprint === fp) {
     return singleton
   }
@@ -114,18 +117,19 @@ export async function getAppRuntime(): Promise<AppRuntime> {
     cache,
   })
 
-  wireResolve(runtime)
+  wireResolve(runtime, languages)
   singleton = runtime
   return runtime
 }
 
-function wireResolve(runtime: AppRuntime) {
+function wireResolve(runtime: AppRuntime, languages: string[]) {
   runtime.resolveForRequest = async (req: TorznabRequest) => {
     const identity = buildIdentityFromTorznab(req)
     const { media, sources } = await runtime.aliasChain.resolve(identity)
     const resolved = resolveTitles(identity, media, {
       maxTitles: runtime.env.MAX_TITLES,
       enableScriptConvert: true,
+      languages,
     })
     return { titles: resolved.titles, media, sources }
   }

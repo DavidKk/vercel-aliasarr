@@ -18,14 +18,7 @@ export default (): Config.InitialOptions => ({
     '^.+\\.[tj]sx?$': [
       'ts-jest',
       {
-        tsconfig: {
-          allowJs: true,
-          module: 'commonjs',
-          moduleResolution: 'node',
-          esModuleInterop: true,
-          isolatedModules: true,
-          jsx: 'react-jsx',
-        },
+        tsconfig: '<rootDir>/tsconfig.jest.json',
       },
     ],
   },

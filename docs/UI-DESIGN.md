@@ -27,7 +27,7 @@ Routes: `/`, `/docs`, `/login`. Code lives in the `app/(site)` Route Group; `(si
 
 ### Admin Workspace
 
-Routes: `/admin`, `/admin/probe`, `/admin/aliases`, `/admin/config/*`.
+Routes: `/admin`, `/admin/probe`, `/admin/aliases`, `/admin/services`, `/admin/indexers`, `/admin/applications`.
 
 - Full-height sidebar, fixed top bar, full-width workspace.
 - `/admin` is the system Dashboard; concrete actions belong on dedicated tool pages.
@@ -91,7 +91,7 @@ Status colors must keep semantic meaning; do not use brand orange for error or s
 - Ordinary cards use `AdminCard` (Admin panel shell, `20px` padding).
 - Titled cards use `AdminCardHeader`; config pages compose via `ConfigCard`.
 - Config sub-pages use `ConfigPage` for `SectionHeader`, `max-w-3xl` column, card stack, bottom save bar.
-- Components in `components/admin-chrome.tsx`, `components/admin-layout.tsx`, `app/admin/config/_components/ui.tsx`. Change global spacing or card structure there—not per-page overrides.
+- Components in `components/admin-chrome.tsx`, `components/admin-layout.tsx`, `app/admin/(config)/_components/ui.tsx`. Change global spacing or card structure there—not per-page overrides.
 
 ### Buttons
 

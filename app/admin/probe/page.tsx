@@ -4,7 +4,7 @@ import { type FormEvent, useMemo, useState } from 'react'
 
 import { AdminPageHeader } from '@/components/admin-chrome'
 import { AdminCard, AdminStack } from '@/components/admin-layout'
-import { Button, Input, Skeleton, Switch } from '@/components/ui'
+import { Button, Input, Skeleton, Switch, useNotification } from '@/components/ui'
 
 type MediaType = 'series' | 'movie'
 
@@ -56,6 +56,7 @@ function optionalNonNegInt(raw: string): number | undefined {
 }
 
 export default function AdminProbePage() {
+  const notification = useNotification()
   const [mediaType, setMediaType] = useState<MediaType>('series')
   const [q, setQ] = useState('')
   const [tvdbId, setTvdbId] = useState('')
@@ -65,7 +66,6 @@ export default function AdminProbePage() {
   const [episode, setEpisode] = useState('')
   const [year, setYear] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<DebugResponse | null>(null)
 
   const canSubmit = useMemo(() => {
@@ -76,7 +76,6 @@ export default function AdminProbePage() {
     e.preventDefault()
     if (!canSubmit) return
     setLoading(true)
-    setError(null)
     try {
       const body: Record<string, unknown> = {
         mediaType,
@@ -106,13 +105,13 @@ export default function AdminProbePage() {
       const json = (await res.json()) as DebugResponse
       if (!res.ok) {
         setData(null)
-        setError(json.error ?? json.message ?? `Request failed (${res.status})`)
+        notification.error(json.error ?? json.message ?? `Request failed (${res.status})`)
         return
       }
       setData(json)
     } catch (err) {
       setData(null)
-      setError(err instanceof Error ? err.message : 'Network error')
+      notification.error(err instanceof Error ? err.message : 'Network error')
     } finally {
       setLoading(false)
     }
@@ -180,11 +179,6 @@ export default function AdminProbePage() {
               </Button>
               {!canSubmit ? <p className="text-xs text-app-muted">Provide a title or at least one ID</p> : null}
             </div>
-            {error ? (
-              <p role="alert" className="rounded-xl border border-app-danger/20 bg-app-dangerSoft px-3 py-2.5 text-sm text-app-danger">
-                {error}
-              </p>
-            ) : null}
           </form>
         </AdminCard>
 

@@ -1,3 +1,4 @@
+import { languageCodesMatch, normalizeLanguageCode } from '@/services/indexers/languages'
 import type { MediaIdentity } from '@/utils/types'
 
 import type { MediaTitles, TitleAlias } from './media-schema'
@@ -10,13 +11,41 @@ export interface ResolvedTitles {
 export interface ResolveOptions {
   maxTitles: number
   enableScriptConvert: boolean
+  /** Empty / omitted = keep all languages. */
+  languages?: string[]
 }
 
 function hasChinese(text: string): boolean {
   return /[\u4e00-\u9fff]/.test(text)
 }
 
+function hasJapanese(text: string): boolean {
+  return /[\u3040-\u30ff]/.test(text)
+}
+
+function hasKorean(text: string): boolean {
+  return /[\uac00-\ud7af]/.test(text)
+}
+
+export function inferTitleLanguage(title: string, alias?: Pick<TitleAlias, 'language' | 'script'>): string | undefined {
+  if (alias?.language) return normalizeLanguageCode(alias.language)
+  if (alias?.script === 'simplified' || alias?.script === 'traditional') return 'zh'
+  if (hasChinese(title)) return 'zh'
+  if (hasJapanese(title)) return 'ja'
+  if (hasKorean(title)) return 'ko'
+  if (/^[a-z0-9\s\-:'".,!?&+/()[\]]+$/i.test(title.trim())) return 'en'
+  return undefined
+}
+
+function aliasAllowed(title: string, alias: TitleAlias | undefined, languages: string[]): boolean {
+  if (!languages.length) return true
+  const inferred = inferTitleLanguage(title, alias)
+  if (!inferred) return true
+  return languageCodesMatch(inferred, languages)
+}
+
 export function resolveTitles(identity: MediaIdentity, media: MediaTitles | null, options: ResolveOptions): ResolvedTitles {
+  const languages = options.languages?.map(normalizeLanguageCode).filter(Boolean) ?? []
   const candidates: TitleAlias[] = []
 
   if (media) {
@@ -25,6 +54,8 @@ export function resolveTitles(identity: MediaIdentity, media: MediaTitles | null
       title: media.primaryTitle,
       type: 'official',
       script: 'latin',
+      // Prefer script/heuristics over originalLanguage so latin primary titles stay English.
+      language: inferTitleLanguage(media.primaryTitle) ?? media.originalLanguage,
       priority: 40,
       verified: true,
     })
@@ -40,6 +71,9 @@ export function resolveTitles(identity: MediaIdentity, media: MediaTitles | null
 
   candidates.sort((a, b) => b.priority - a.priority)
 
+  const filtered = languages.length ? candidates.filter((alias) => aliasAllowed(alias.title, alias, languages)) : candidates
+  const working = filtered
+
   const seen = new Set<string>()
   const ordered: string[] = []
 
@@ -50,11 +84,11 @@ export function resolveTitles(identity: MediaIdentity, media: MediaTitles | null
     ordered.push(key)
   }
 
-  for (const alias of candidates) {
+  for (const alias of working) {
     push(alias.title)
   }
 
-  if (options.enableScriptConvert) {
+  if (options.enableScriptConvert && (!languages.length || languages.some((code) => normalizeLanguageCode(code) === 'zh'))) {
     const extras: string[] = []
     for (const title of ordered) {
       if (!hasChinese(title)) continue

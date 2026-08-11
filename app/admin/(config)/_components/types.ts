@@ -4,6 +4,7 @@ export interface ProwlarrIndexer {
   enable: boolean
   protocol?: string
   privacy?: string
+  language?: string
 }
 
 export interface JackettIndexer {

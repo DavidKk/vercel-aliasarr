@@ -14,5 +14,13 @@ export default function nextConfig(phase: string): NextConfig {
       // Match other vercel-* projects: lint via `pnpm lint` so build is not blocked by eslint sort rules
       ignoreDuringBuilds: true,
     },
+    async redirects() {
+      return [
+        { source: '/admin/config', destination: '/admin/services', permanent: false },
+        { source: '/admin/config/services', destination: '/admin/services', permanent: false },
+        { source: '/admin/config/indexers', destination: '/admin/indexers', permanent: false },
+        { source: '/admin/config/applications', destination: '/admin/applications', permanent: false },
+      ]
+    },
   }
 }

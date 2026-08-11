@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 
-export default function ConfigPage() {
-  redirect('/admin/config/services')
+/** Legacy entry — configuration is split into top-level Admin pages. */
+export default function LegacyConfigPage() {
+  redirect('/admin/services')
 }

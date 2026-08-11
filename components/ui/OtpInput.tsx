@@ -1,6 +1,7 @@
 'use client'
 
 import { type FormEvent, type KeyboardEvent, useId, useLayoutEffect, useRef, useState } from 'react'
+import { FiShield } from 'react-icons/fi'
 
 export interface OtpInputProps {
   label?: string
@@ -172,7 +173,7 @@ export function OtpInput({ label = '2FA code', length = 6, required = false, val
       <legend className="flex w-full items-center justify-between gap-3">
         <span className="ui-label">{label}</span>
         <span className="inline-flex items-center gap-1.5 text-[0.6rem] text-app-muted">
-          <ShieldIcon /> Authenticator
+          <FiShield className="h-3.5 w-3.5" aria-hidden /> Authenticator
         </span>
       </legend>
 
@@ -251,14 +252,5 @@ export function OtpInput({ label = '2FA code', length = 6, required = false, val
         Enter the {length}-digit code from your authenticator app.
       </p>
     </fieldset>
-  )
-}
-
-function ShieldIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 20 20" className="h-3.5 w-3.5 fill-none stroke-current" strokeWidth="1.6">
-      <path d="M10 2.5 4 5v4.2c0 3.7 2.5 6.5 6 7.8 3.5-1.3 6-4.1 6-7.8V5l-6-2.5Z" />
-      <path d="m7.5 9.8 1.7 1.7 3.5-3.6" />
-    </svg>
   )
 }

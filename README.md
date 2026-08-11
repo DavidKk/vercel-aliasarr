@@ -19,17 +19,17 @@ Virtual **Torznab** indexer on Vercel that expands Chinese title aliases for **S
 ```bash
 pnpm i
 cp .env.example .env
-# configure Upstash, CONFIG_ENCRYPTION_KEY, and login secrets; enter integrations in /admin/config
+# configure Upstash, CONFIG_ENCRYPTION_KEY, and login secrets; enter integrations in /admin/services
 pnpm dev
 ```
 
 - Home: `http://localhost:3000`
-- Login / admin: `/login`, `/admin`, `/admin/config`, `/admin/probe`, `/admin/aliases`
+- Login / admin: `/login`, `/admin`, `/admin/services`, `/admin/indexers`, `/admin/applications`, `/admin/probe`, `/admin/aliases`
 - Health: `/api/health`
 
 ## Environment
 
-See [`.env.example`](./.env.example). Never commit real keys. Upstash credentials, `CONFIG_ENCRYPTION_KEY`, and Admin bootstrap credentials remain environment variables. Service URLs, API keys, provider state, and selected indexers are managed at `/admin/config`; stored credentials are never returned to the browser.
+See [`.env.example`](./.env.example). Never commit real keys. Upstash credentials, `CONFIG_ENCRYPTION_KEY`, and Admin bootstrap credentials remain environment variables. Service URLs, API keys, provider state, and selected indexers are managed under `/admin/services`, `/admin/indexers`, and `/admin/applications`; stored credentials are never returned to the browser.
 
 Production configuration is stored under `aliasarr:config:v1` in Vercel Marketplace Upstash Redis. Its connection bundle is sealed with AES-256-GCM. Local development uses the ignored, encrypted `.aliasarr/config.json`, so configuration survives dev-server restarts without writing to the remote KV. Gist is reserved for alias YAML and automatic alias write-back.
 

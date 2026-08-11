@@ -50,4 +50,56 @@ describe('resolveTitles', () => {
     const resolved = resolveTitles({ mediaType: 'series', primaryTitle: 'Only English' }, null, { maxTitles: 3, enableScriptConvert: true })
     expect(resolved.titles).toEqual(['Only English'])
   })
+
+  it('filters titles by selected languages', () => {
+    const media: MediaTitles = {
+      mediaId: 'tvdb:1',
+      mediaType: 'series',
+      primaryTitle: 'Joy of Life',
+      originalLanguage: 'zh',
+      sources: ['gist'],
+      aliases: [
+        { title: '\u5e86\u4f59\u5e74', type: 'original', script: 'simplified', language: 'zh', priority: 100, verified: true },
+        { title: 'Joy of Life', type: 'official', script: 'latin', language: 'en', priority: 50, verified: true },
+        { title: '\u30b8\u30e7\u30a4', type: 'translation', script: 'latin', language: 'ja', priority: 40, verified: true },
+      ],
+      updatedAt: new Date().toISOString(),
+    }
+
+    const chineseOnly = resolveTitles({ mediaType: 'series', primaryTitle: 'Joy of Life' }, media, {
+      maxTitles: 10,
+      enableScriptConvert: false,
+      languages: ['zh'],
+    })
+    expect(chineseOnly.titles).toEqual(['\u5e86\u4f59\u5e74'])
+
+    const englishOnly = resolveTitles({ mediaType: 'series', primaryTitle: 'Joy of Life' }, media, {
+      maxTitles: 10,
+      enableScriptConvert: false,
+      languages: ['en'],
+    })
+    expect(englishOnly.titles).toEqual(['Joy of Life'])
+  })
+
+  it('keeps an empty title list when no aliases match the language filter', () => {
+    const media: MediaTitles = {
+      mediaId: 'tvdb:1',
+      mediaType: 'series',
+      primaryTitle: 'Joy of Life',
+      originalLanguage: 'zh',
+      sources: ['gist'],
+      aliases: [
+        { title: '\u5e86\u4f59\u5e74', type: 'original', script: 'simplified', language: 'zh', priority: 100, verified: true },
+        { title: 'Joy of Life', type: 'official', script: 'latin', language: 'en', priority: 50, verified: true },
+      ],
+      updatedAt: new Date().toISOString(),
+    }
+
+    const frenchOnly = resolveTitles({ mediaType: 'series', primaryTitle: 'Joy of Life' }, media, {
+      maxTitles: 10,
+      enableScriptConvert: false,
+      languages: ['fr'],
+    })
+    expect(frenchOnly.titles).toEqual([])
+  })
 })

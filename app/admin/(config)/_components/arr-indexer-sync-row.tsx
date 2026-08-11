@@ -1,6 +1,8 @@
 'use client'
 
-import { Skeleton, Toggle } from '@/components/ui'
+import { FiRefreshCw } from 'react-icons/fi'
+
+import { Skeleton, Toggle, Tooltip } from '@/components/ui'
 
 import { ConnectionTestButton } from './connection-test-button'
 import type { ApplicationStatus } from './types'
@@ -50,32 +52,25 @@ export function ApplicationStatusButton({
   const connected = Boolean(status?.configured && status.reachable)
   const label = status?.reachable ? 'Connected' : status?.configured ? 'Offline' : 'Unconfigured'
   return (
-    <button
-      type="button"
-      className={`group min-w-[6.5rem] shrink-0 rounded-full px-2.5 py-1 text-[0.62rem] font-semibold transition disabled:cursor-wait ${connected ? 'bg-app-successSoft text-app-success' : 'bg-app-dangerSoft text-app-danger'}`}
-      aria-label={`Refresh ${application} status`}
-      title={`Refresh ${application} status`}
-      disabled={refreshing}
-      onClick={onRefresh}
-    >
-      {refreshing ? (
-        <Skeleton className="mx-auto h-4 w-16" rounded="full" />
-      ) : (
-        <>
-          <span className="group-hover:hidden group-focus-visible:hidden">{label}</span>
-          <span className="hidden items-center justify-center gap-1 group-hover:flex group-focus-visible:flex">
-            <RefreshIcon /> Refresh
-          </span>
-        </>
-      )}
-    </button>
-  )
-}
-
-function RefreshIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 20 20" className="h-3 w-3 fill-none stroke-current" strokeWidth="1.8">
-      <path d="M16 6V2.5M16 2.5h-3.5M16 2.5A7 7 0 1 0 17 11" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <Tooltip content={`Refresh ${application} status`} placement="left">
+      <button
+        type="button"
+        className={`group min-w-[6.5rem] shrink-0 rounded-full px-2.5 py-1 text-[0.62rem] font-semibold transition disabled:cursor-wait ${connected ? 'bg-app-successSoft text-app-success' : 'bg-app-dangerSoft text-app-danger'}`}
+        aria-label={`Refresh ${application} status`}
+        disabled={refreshing}
+        onClick={onRefresh}
+      >
+        {refreshing ? (
+          <Skeleton className="mx-auto h-4 w-16" rounded="full" />
+        ) : (
+          <>
+            <span className="group-hover:hidden group-focus-visible:hidden">{label}</span>
+            <span className="hidden items-center justify-center gap-1 group-hover:flex group-focus-visible:flex">
+              <FiRefreshCw className="h-3 w-3" aria-hidden /> Refresh
+            </span>
+          </>
+        )}
+      </button>
+    </Tooltip>
   )
 }

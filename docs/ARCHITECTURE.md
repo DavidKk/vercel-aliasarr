@@ -26,7 +26,7 @@ Sonarr / Radarr
                               dedupe → Torznab XML
 ```
 
-Admin surface: `/login` (JWT Cookie) → `/admin` Dashboard. `/admin/config` lands directly on Services. Configuration is split by responsibility across `/admin/config/services`, `/admin/config/indexers`, and `/admin/config/applications`, with each page showing its own bottom save bar. Search diagnostics live at `/admin/probe`; alias management at `/admin/aliases` → GitHub Gist (read/write).
+Admin surface: `/login` (JWT Cookie) → `/admin` Dashboard. Configuration is split into top-level Admin pages: `/admin/services`, `/admin/indexers`, and `/admin/applications`, each with its own bottom save bar. Search diagnostics live at `/admin/probe`; alias management at `/admin/aliases` → GitHub Gist (read/write). Legacy `/admin/config/*` redirects to these pages.
 
 The UI uses the **Midnight Operations** design system: the public site handles brand expression; Admin uses a full-height sidebar, fixed top bar, and full-width high-density workspace. See [`UI-DESIGN.md`](./UI-DESIGN.md) for the full spec.
 

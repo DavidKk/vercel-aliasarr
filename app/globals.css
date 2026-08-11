@@ -144,7 +144,7 @@
   }
 
   .ui-panel {
-    @apply rounded-2xl border border-app-border/80 bg-app-surface/80 shadow-[0_20px_70px_rgb(0_0_0/0.22)] backdrop-blur-xl;
+    @apply relative rounded-2xl border border-app-border/80 bg-app-surface/80 shadow-[0_20px_70px_rgb(0_0_0/0.22)] backdrop-blur-xl has-[[aria-expanded=true]]:z-50;
   }
 
   .ui-skeleton {

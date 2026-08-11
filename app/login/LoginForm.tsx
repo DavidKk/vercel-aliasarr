@@ -54,7 +54,7 @@ export function LoginForm(props: Readonly<LoginFormProps>) {
     <form onSubmit={onSubmit} className="ui-panel ui-fade-up w-full max-w-md space-y-5 p-6 sm:p-8">
       <div className="mb-7">
         <div className="mb-5">
-          <BrandLogo height={56} className="rounded-xl shadow-[0_10px_30px_rgb(var(--app-accent)/0.22)]" priority />
+          <BrandLogo size={56} priority />
         </div>
         <p className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-app-accent">Console access</p>
         <h1 className="mt-2 font-display text-3xl font-semibold tracking-[-0.04em] text-app-ink">{signet2fa ? 'Confirm with 2FA' : 'Welcome back'}</h1>

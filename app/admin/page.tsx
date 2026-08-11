@@ -130,7 +130,9 @@ export default function AdminOverviewPage() {
             <div className="space-y-2 p-3">
               <QuickAction href="/admin/probe" title="Run search probe" description="Inspect title expansion and results" mark="01" />
               <QuickAction href="/admin/aliases" title="Manage aliases" description="Edit YAML records in Gist" mark="02" />
-              <QuickAction href="/docs" title="Open documentation" description="Review API and MCP contracts" mark="03" external />
+              <QuickAction href="/admin/services" title="Configure services" description="Gist, metadata, and Server API key" mark="03" />
+              <QuickAction href="/admin/indexers" title="Configure indexers" description="Prowlarr and Jackett upstreams" mark="04" />
+              <QuickAction href="/admin/applications" title="Sync applications" description="Install Aliasarr in Sonarr/Radarr" mark="05" />
             </div>
           </AdminCard>
         </div>

@@ -2,6 +2,7 @@
 
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react'
 
+import { useNotification } from '@/components/ui'
 import type { AliasarrConfig, AliasarrSecretName, AliasarrSecretStatus } from '@/services/config'
 
 import type { ApiEnvelope } from './types'
@@ -32,6 +33,7 @@ interface ConfigContextValue {
 const ConfigContext = createContext<ConfigContextValue | null>(null)
 
 export function ConfigProvider({ children }: { children: ReactNode }) {
+  const notification = useNotification()
   const [config, setConfig] = useState<AliasarrConfig | null>(null)
   const [revision, setRevision] = useState<string | null>(null)
   const [storageConfigured, setStorageConfigured] = useState(true)
@@ -41,12 +43,28 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const [secretUpdates, setSecretUpdates] = useState<Partial<Record<AliasarrSecretName, string>>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [message, setMessageState] = useState<string | null>(null)
+  const [error, setErrorState] = useState<string | null>(null)
+
+  const setError = useCallback(
+    (next: string | null) => {
+      setErrorState(next)
+      if (next) notification.error(next)
+    },
+    [notification]
+  )
+
+  const setMessage = useCallback(
+    (next: string | null) => {
+      setMessageState(next)
+      if (next) notification.success(next)
+    },
+    [notification]
+  )
 
   const load = useCallback(async () => {
     setLoading(true)
-    setError(null)
+    setErrorState(null)
     try {
       const response = await fetch('/api/config')
       const json = (await response.json()) as ApiEnvelope<{
@@ -70,7 +88,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [setError])
 
   useEffect(() => {
     void load()
@@ -78,7 +96,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 
   function updateConfig(updater: (current: AliasarrConfig) => AliasarrConfig) {
     setConfig((current) => (current ? updater(current) : current))
-    setMessage(null)
+    setMessageState(null)
   }
 
   function updateConnection(name: keyof AliasarrConfig['connections'], value: string) {
@@ -87,14 +105,14 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 
   function updateSecret(name: AliasarrSecretName, value: string) {
     setSecretUpdates((current) => ({ ...current, [name]: value }))
-    setMessage(null)
+    setMessageState(null)
   }
 
   async function save(section: ConfigSection) {
     if (!config) return
     setSaving(true)
-    setError(null)
-    setMessage(null)
+    setErrorState(null)
+    setMessageState(null)
     try {
       const response = await fetch('/api/config', {
         method: 'PUT',

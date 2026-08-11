@@ -6,6 +6,7 @@ import type { Metadata } from 'next'
 import { IBM_Plex_Mono, Sora } from 'next/font/google'
 import type { ReactNode } from 'react'
 
+import { Providers } from '@/components/providers'
 import { buildRootMetadata } from '@/lib/seo'
 
 const sora = Sora({
@@ -33,7 +34,9 @@ export default function RootLayout(props: Readonly<RootLayoutProps>) {
     <html lang="en" className="bg-app-bg">
       <Analytics />
       <SpeedInsights />
-      <body className={`${sora.variable} ${ibmPlexMono.variable} antialiased`}>{children}</body>
+      <body className={`${sora.variable} ${ibmPlexMono.variable} antialiased`}>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   )
 }

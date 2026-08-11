@@ -2,14 +2,12 @@
 
 import { useState } from 'react'
 
-import { Button, Input } from '@/components/ui'
+import { Button, Input, useNotification } from '@/components/ui'
 import { buildCursorInstallUrl, buildMcpJsonSnippet, buildVscodeInstallUrl, MCP_API_KEY_PLACEHOLDER } from '@/lib/mcp-install'
 
-type Status = { tone: 'ok' | 'warn'; text: string } | null
-
 export function McpInstallPanel({ mcpUrl }: { mcpUrl: string }) {
+  const notification = useNotification()
   const [apiKey, setApiKey] = useState('')
-  const [status, setStatus] = useState<Status>(null)
 
   const effectiveKey = apiKey.trim() || MCP_API_KEY_PLACEHOLDER
   const cursorUrl = buildCursorInstallUrl(mcpUrl, effectiveKey)
@@ -17,16 +15,10 @@ export function McpInstallPanel({ mcpUrl }: { mcpUrl: string }) {
   const vscodeInsidersUrl = buildVscodeInstallUrl(mcpUrl, effectiveKey, 'insiders')
   const jsonSnippet = buildMcpJsonSnippet(mcpUrl, effectiveKey)
 
-  function flash(tone: 'ok' | 'warn', text: string) {
-    setStatus({ tone, text })
-    window.setTimeout(() => setStatus(null), 2400)
-  }
-
   function openProtocol(url: string, label: string) {
     try {
-      // Custom protocols often do nothing as plain <a href>; assign is more reliable.
       window.location.assign(url)
-      flash('ok', `Opening ${label}… If nothing happens, install the app or use Copy link.`)
+      notification.success(`Opening ${label}… If nothing happens, install the app or use Copy link.`)
     } catch {
       void copyText(url, `${label} install link`)
     }
@@ -39,13 +31,13 @@ export function McpInstallPanel({ mcpUrl }: { mcpUrl: string }) {
       } else {
         fallbackCopy(text)
       }
-      flash('ok', `Copied ${label}`)
+      notification.success(`Copied ${label}`)
     } catch {
       try {
         fallbackCopy(text)
-        flash('ok', `Copied ${label}`)
+        notification.success(`Copied ${label}`)
       } catch {
-        flash('warn', `Could not copy ${label}. Select the JSON below and copy manually.`)
+        notification.warning(`Could not copy ${label}. Select the JSON below and copy manually.`)
       }
     }
   }
@@ -99,15 +91,9 @@ export function McpInstallPanel({ mcpUrl }: { mcpUrl: string }) {
         </Button>
       </div>
 
-      {status ? (
-        <p className={`text-xs ${status.tone === 'ok' ? 'text-app-success' : 'text-app-warning'}`} role="status">
-          {status.text}
-        </p>
-      ) : (
-        <p className="text-xs text-app-muted">
-          Install buttons open the desktop app via protocol handlers. If the browser ignores them, use the Copy link buttons or paste the JSON below.
-        </p>
-      )}
+      <p className="text-xs text-app-muted">
+        Install buttons open the desktop app via protocol handlers. If the browser ignores them, use the Copy link buttons or paste the JSON below.
+      </p>
 
       <pre className="overflow-x-auto border border-app-border bg-app-subtle/50 p-3 font-mono text-[0.75rem] text-app-ink">
         <code>{jsonSnippet}</code>

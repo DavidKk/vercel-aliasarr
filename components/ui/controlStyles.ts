@@ -24,3 +24,10 @@ export const CONTROL_CLASS = [
 ].join(' ')
 
 export const CONTROL_RADIUS = 'rounded-xl'
+/** Square control mark (checkbox). Avoid CONTROL_RADIUS — xl on 16px looks circular. */
+export const CONTROL_MARK_RADIUS = 'rounded-sm'
+
+/** Menu radius biased away from the trigger edge. */
+export function dropdownMenuRadius(placement: 'bottom' | 'top'): string {
+  return placement === 'top' ? 'rounded-t-xl rounded-b-md' : 'rounded-b-xl rounded-t-md'
+}

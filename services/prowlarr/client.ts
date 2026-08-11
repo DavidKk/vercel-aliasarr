@@ -29,6 +29,8 @@ export interface ProwlarrIndexer {
   enable: boolean
   protocol?: string
   privacy?: string
+  /** Prowlarr indexer language tag, e.g. `en-US`, `zh-CN`. */
+  language?: string
 }
 
 export function createProwlarrClient(config: ProwlarrClientConfig): ProwlarrClient {
@@ -101,8 +103,19 @@ export function createProwlarrClient(config: ProwlarrClientConfig): ProwlarrClie
       signal: AbortSignal.timeout(Math.min(config.timeoutMs, 10000)),
     })
     if (!res.ok) throw new Error(`Prowlarr indexer discovery failed (${res.status})`)
-    const data = (await res.json()) as ProwlarrIndexer[]
-    return Array.isArray(data) ? data.filter((indexer) => Number.isInteger(indexer.id) && typeof indexer.name === 'string').sort((a, b) => a.name.localeCompare(b.name)) : []
+    const data = (await res.json()) as Array<Partial<ProwlarrIndexer> & { Language?: string }>
+    if (!Array.isArray(data)) return []
+    return data
+      .filter((indexer) => Number.isInteger(indexer.id) && typeof indexer.name === 'string')
+      .map((indexer) => ({
+        id: indexer.id as number,
+        name: indexer.name as string,
+        enable: indexer.enable !== false,
+        protocol: indexer.protocol,
+        privacy: indexer.privacy,
+        language: typeof indexer.language === 'string' ? indexer.language : typeof indexer.Language === 'string' ? indexer.Language : undefined,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name))
   }
 
   return { search, ping, listIndexers }
