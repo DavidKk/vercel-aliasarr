@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { FiArrowRight } from 'react-icons/fi'
 
 import { AdminPageHeader } from '@/components/admin-chrome'
 import { AdminCard, AdminStack } from '@/components/admin-layout'
@@ -210,7 +211,7 @@ function QuickAction({ href, title, description, mark, external }: { href: strin
         <span className="mt-1 block truncate text-[0.63rem] text-app-muted">{description}</span>
       </span>
       <span className="text-app-muted transition group-hover:translate-x-0.5 group-hover:text-app-ink" aria-hidden>
-        →
+        <FiArrowRight className="h-3.5 w-3.5" />
       </span>
     </Link>
   )

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { FiCopy, FiDownload } from 'react-icons/fi'
 
 import { Button, Input, useNotification } from '@/components/ui'
 import { buildCursorInstallUrl, buildMcpJsonSnippet, buildVscodeInstallUrl, MCP_API_KEY_PLACEHOLDER } from '@/lib/mcp-install'
@@ -66,27 +67,34 @@ export function McpInstallPanel({ mcpUrl }: { mcpUrl: string }) {
 
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" variant="primary" onClick={() => openProtocol(cursorUrl, 'Cursor')}>
+          <FiDownload className="h-3.5 w-3.5" aria-hidden />
           Install in Cursor
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={() => openProtocol(vscodeUrl, 'VS Code')}>
+          <FiDownload className="h-3.5 w-3.5" aria-hidden />
           Install in VS Code
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={() => openProtocol(vscodeInsidersUrl, 'VS Code Insiders')}>
+          <FiDownload className="h-3.5 w-3.5" aria-hidden />
           VS Code Insiders
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={() => void copyText(jsonSnippet, 'mcp.json')}>
+          <FiCopy className="h-3.5 w-3.5" aria-hidden />
           Copy mcp.json
         </Button>
       </div>
 
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" variant="ghost" onClick={() => void copyText(cursorUrl, 'Cursor install link')}>
+          <FiCopy className="h-3.5 w-3.5" aria-hidden />
           Copy Cursor link
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={() => void copyText(vscodeUrl, 'VS Code install link')}>
+          <FiCopy className="h-3.5 w-3.5" aria-hidden />
           Copy VS Code link
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={() => void copyText(vscodeInsidersUrl, 'VS Code Insiders link')}>
+          <FiCopy className="h-3.5 w-3.5" aria-hidden />
           Copy Insiders link
         </Button>
       </div>

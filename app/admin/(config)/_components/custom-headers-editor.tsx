@@ -25,7 +25,7 @@ export function rowsFromHeaderNames(names: string[]): CustomHeaderEditorRow[] {
 export function CustomHeadersEditor({
   value,
   onChange,
-  description = 'Sent with every request to this host. For Cloudflare Access use CF-Access-Client-Id and CF-Access-Client-Secret (Service Token). Do not reuse X-Api-Key here — that is reserved for the Radarr/Sonarr API key.',
+  description = 'Sent with every request to this host. For Cloudflare Access use CF-Access-Client-Id and CF-Access-Client-Secret (Service Token). Do not put the service API key here — use the dedicated API key field instead.',
 }: {
   value: CustomHeaderEditorRow[]
   onChange(next: CustomHeaderEditorRow[]): void

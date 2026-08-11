@@ -162,13 +162,13 @@ export function createJackettClient(config: JackettClientConfig): JackettClient 
       redirect: 'manual',
       signal: combined,
     })
-    if (response.status >= 300 && response.status < 400) {
-      throw new Error(cloudflareAccessFailureMessage('Jackett', response.status, customHeaderNames))
-    }
-    if (!response.ok) {
-      const body = await response.text()
+    if (!response.ok || (response.status >= 300 && response.status < 400)) {
+      const body = response.ok ? '' : await response.text().catch(() => '')
       if (looksLikeCloudflareAccess(response.status, response, body)) {
         throw new Error(cloudflareAccessFailureMessage('Jackett', response.status, customHeaderNames))
+      }
+      if (response.status >= 300 && response.status < 400) {
+        throw new Error(`Jackett redirected (HTTP ${response.status})`)
       }
       throw new Error(`Jackett request failed (${response.status})`)
     }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { FiArrowUpRight } from 'react-icons/fi'
 
 import { ButtonLink } from '@/components/ui'
 
@@ -142,7 +143,8 @@ export default function ServicesConfigPage() {
         <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-app-border/70 pt-4">
           {gistId ? (
             <ButtonLink href={`https://gist.github.com/${encodeURIComponent(gistId)}`} target="_blank" rel="noreferrer" variant="ghost" size="sm">
-              Open Gist <span aria-hidden>↗</span>
+              Open Gist
+              <FiArrowUpRight className="h-3.5 w-3.5" aria-hidden />
             </ButtonLink>
           ) : null}
           <ConnectionTestButton service="gist" label="Test Gist" />

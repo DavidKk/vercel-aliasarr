@@ -27,9 +27,13 @@ export function ButtonLink(props: ButtonLinkProps) {
   const { variant = 'primary', size = 'md', className = '', children, ...rest } = props
   return (
     <Link
-      className={['inline-flex items-center justify-center border font-semibold transition duration-200', CONTROL_RADIUS, variantClass[variant], sizeClass[size], className].join(
-        ' '
-      )}
+      className={[
+        'inline-flex items-center justify-center gap-1.5 border font-semibold transition duration-200',
+        CONTROL_RADIUS,
+        variantClass[variant],
+        sizeClass[size],
+        className,
+      ].join(' ')}
       {...rest}
     >
       {children}

@@ -194,7 +194,11 @@ export default function IndexersConfigPage() {
               value={form.connections.prowlarrDownloadUrl}
               onChange={(value) => updateConnection('prowlarrDownloadUrl', value)}
             />
-            <CustomHeadersEditor value={customHeaders.prowlarrHeaders} onChange={(rows) => updateCustomHeaders('prowlarrHeaders', rows)} />
+            <CustomHeadersEditor
+              value={customHeaders.prowlarrHeaders}
+              onChange={(rows) => updateCustomHeaders('prowlarrHeaders', rows)}
+              description="Sent with every request to this host. For Cloudflare Access use CF-Access-Client-Id and CF-Access-Client-Secret (Service Token). Do not put the Prowlarr API key here — use the API key field above."
+            />
           </div>
         }
       >
@@ -235,7 +239,11 @@ export default function IndexersConfigPage() {
               value={secretUpdates.jackettApiKey ?? ''}
               onChange={(value) => updateSecret('jackettApiKey', value)}
             />
-            <CustomHeadersEditor value={customHeaders.jackettHeaders} onChange={(rows) => updateCustomHeaders('jackettHeaders', rows)} />
+            <CustomHeadersEditor
+              value={customHeaders.jackettHeaders}
+              onChange={(rows) => updateCustomHeaders('jackettHeaders', rows)}
+              description="Sent with every request to this host. For Cloudflare Access use CF-Access-Client-Id and CF-Access-Client-Secret (Service Token). Do not put the Jackett API key here — use the API key field above."
+            />
           </div>
         }
       >

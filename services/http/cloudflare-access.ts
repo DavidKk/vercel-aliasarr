@@ -1,12 +1,14 @@
 /** Detect Cloudflare Access challenges without mistaking ordinary *arr API-key 401s. */
 export function looksLikeCloudflareAccess(status: number, response: Response, body: string): boolean {
   const location = response.headers.get('location') ?? ''
-  const cfRay = Boolean(response.headers.get('cf-ray'))
+  const accessLocation = /cloudflareaccess\.com|cf-access/i.test(location)
+  const accessBody = /cloudflareaccess\.com|cf-access|access denied/i.test(body)
+  // Do not treat `cf-ray` alone as Access — orange-cloud proxies set it on normal API failures too.
   if (status >= 300 && status < 400) {
-    return cfRay || /cloudflareaccess\.com|cf-access/i.test(location)
+    return accessLocation
   }
   if (status === 403 || status === 401) {
-    return cfRay || /cloudflareaccess\.com|cf-access|access denied/i.test(body)
+    return accessLocation || accessBody
   }
   return /login\.cloudflareaccess\.com/i.test(body)
 }

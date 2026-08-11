@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import type { ReactNode } from 'react'
+import { FiArrowUpRight, FiLogOut } from 'react-icons/fi'
 
 import { AdminScrollArea } from '@/components/admin-scroll-area'
 import { BrandLockup } from '@/components/brand-lockup'
@@ -77,11 +78,11 @@ export function AdminChrome({ children, username }: { children: ReactNode; usern
           <p className="ui-label mb-3 mt-8 px-3">Resources</p>
           <Link href="/docs" className="flex items-center justify-between rounded-lg px-3 py-2.5 text-xs text-app-muted transition hover:bg-app-subtle/40 hover:text-app-ink">
             <span>Documentation</span>
-            <span aria-hidden>↗</span>
+            <FiArrowUpRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
           </Link>
           <Link href="/docs/mcp" className="flex items-center justify-between rounded-lg px-3 py-2.5 text-xs text-app-muted transition hover:bg-app-subtle/40 hover:text-app-ink">
             <span>MCP & Skill</span>
-            <span aria-hidden>↗</span>
+            <FiArrowUpRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
           </Link>
           <a
             href="/api/health"
@@ -90,7 +91,7 @@ export function AdminChrome({ children, username }: { children: ReactNode; usern
             className="flex items-center justify-between rounded-lg px-3 py-2.5 text-xs text-app-muted transition hover:bg-app-subtle/40 hover:text-app-ink"
           >
             <span>Health endpoint</span>
-            <span aria-hidden>↗</span>
+            <FiArrowUpRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
           </a>
         </nav>
 
@@ -109,8 +110,9 @@ export function AdminChrome({ children, username }: { children: ReactNode; usern
               <button
                 type="button"
                 onClick={() => void logout()}
-                className="inline-flex h-7 shrink-0 items-center justify-center rounded-md px-2 text-[0.58rem] font-medium text-app-muted/75 transition hover:bg-app-dangerSoft hover:text-app-danger"
+                className="inline-flex h-7 shrink-0 items-center justify-center gap-1 rounded-md px-2 text-[0.58rem] font-medium text-app-muted/75 transition hover:bg-app-dangerSoft hover:text-app-danger"
               >
+                <FiLogOut className="h-3 w-3" aria-hidden />
                 Sign out
               </button>
             </div>

@@ -114,7 +114,11 @@ export default function ApplicationsConfigPage() {
                 value={secretUpdates[secretName] ?? ''}
                 onChange={(value) => updateSecret(secretName, value)}
               />
-              <CustomHeadersEditor value={customHeaders[headersName]} onChange={(rows) => updateCustomHeaders(headersName, rows)} />
+              <CustomHeadersEditor
+                value={customHeaders[headersName]}
+                onChange={(rows) => updateCustomHeaders(headersName, rows)}
+                description="Sent with every request to this host. For Cloudflare Access use CF-Access-Client-Id and CF-Access-Client-Secret (Service Token). Do not reuse X-Api-Key here — that is reserved for the Sonarr/Radarr API key field."
+              />
             </div>
             <ArrIndexerSyncRow
               application={application}

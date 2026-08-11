@@ -65,4 +65,18 @@ describe('createProwlarrClient', () => {
     await expect(client.probe!()).rejects.toThrow(/No custom headers were sent/i)
     await expect(client.ping()).resolves.toBe(false)
   })
+
+  it('does not treat ordinary redirects as Cloudflare Access', async () => {
+    stubGlobal(
+      'fetch',
+      jest.fn(async () => new Response('', { status: 301, headers: { location: 'https://prowlarr.example.com/api/v1/system/status' } }))
+    )
+    const client = createProwlarrClient({
+      baseUrl: 'https://prowlarr.example.com',
+      apiKey: 'key',
+      timeoutMs: 100,
+    })
+
+    await expect(client.probe!()).rejects.toThrow(/Prowlarr redirected \(HTTP 301\)/i)
+  })
 })

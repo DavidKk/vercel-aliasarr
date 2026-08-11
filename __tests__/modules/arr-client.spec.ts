@@ -131,10 +131,24 @@ describe('*arr application client', () => {
     await expect(client.ping()).rejects.toThrow(/radarr API 401/i)
   })
 
-  it('reports when Access headers were sent but Cloudflare still blocked', async () => {
+  it('does not treat orange-cloud 403 without Access signals as Cloudflare Access', async () => {
     stubGlobal(
       'fetch',
       jest.fn(async () => new Response('Forbidden', { status: 403, headers: { 'cf-ray': 'abc' } }))
+    )
+    const client = createArrClient({
+      application: 'radarr',
+      baseUrl: 'https://radarr.example.com',
+      apiKey: 'radarr-key',
+    })
+
+    await expect(client.ping()).rejects.toThrow(/radarr API 403/i)
+  })
+
+  it('reports when Access headers were sent but Cloudflare still blocked', async () => {
+    stubGlobal(
+      'fetch',
+      jest.fn(async () => new Response('Access denied by Cloudflare Access', { status: 403, headers: { 'cf-ray': 'abc' } }))
     )
     const client = createArrClient({
       application: 'radarr',

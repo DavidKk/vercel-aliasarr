@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { FiArrowRight } from 'react-icons/fi'
 
 import { DOCS_NAV } from '@/components/docs/constants'
 import { DocsHashRedirect } from '@/components/docs/DocsHashRedirect'
@@ -39,7 +40,10 @@ export default function DocsOverviewPage() {
               className="rounded-xl border border-app-border/80 bg-app-subtle/40 px-3 py-3 text-sm text-app-ink transition hover:border-app-accent/40 hover:text-app-accent"
             >
               <span className="block font-mono text-[0.62rem] uppercase tracking-[0.14em] text-app-muted">{item.label}</span>
-              <span className="mt-1 block font-medium">Open {item.label} docs →</span>
+              <span className="mt-1 flex items-center gap-1 font-medium">
+                Open {item.label} docs
+                <FiArrowRight className="h-3.5 w-3.5" aria-hidden />
+              </span>
             </Link>
           ))}
         </div>

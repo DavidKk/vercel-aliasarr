@@ -53,13 +53,13 @@ export function createProwlarrClient(config: ProwlarrClientConfig): ProwlarrClie
   }
 
   function assertReachable(response: Response, body = ''): void {
-    if (response.status >= 300 && response.status < 400) {
+    if (looksLikeCloudflareAccess(response.status, response, body)) {
       throw new Error(cloudflareAccessFailureMessage('Prowlarr', response.status, customHeaderNames))
     }
+    if (response.status >= 300 && response.status < 400) {
+      throw new Error(`Prowlarr redirected (HTTP ${response.status})`)
+    }
     if (!response.ok) {
-      if (looksLikeCloudflareAccess(response.status, response, body)) {
-        throw new Error(cloudflareAccessFailureMessage('Prowlarr', response.status, customHeaderNames))
-      }
       throw new Error(`Prowlarr returned HTTP ${response.status}`)
     }
   }
@@ -80,11 +80,9 @@ export function createProwlarrClient(config: ProwlarrClientConfig): ProwlarrClie
 
     try {
       const res = await upstream(url, { signal: combined })
-      if (res.status >= 300 && res.status < 400) {
-        logger.warn({ status: res.status, host: url.host, path: url.pathname }, 'prowlarr search blocked by redirect')
-        return []
-      }
-      if (!res.ok) {
+      if (!res.ok || (res.status >= 300 && res.status < 400)) {
+        const body = res.status === 401 || res.status === 403 ? await res.text().catch(() => '') : ''
+        const accessBlocked = looksLikeCloudflareAccess(res.status, res, body)
         logger.warn(
           {
             status: res.status,
@@ -92,8 +90,10 @@ export function createProwlarrClient(config: ProwlarrClientConfig): ProwlarrClie
             path: url.pathname,
             categories: options.categories,
             indexerIds: options.indexerIds,
+            accessBlocked,
+            detail: accessBlocked ? cloudflareAccessFailureMessage('Prowlarr', res.status, customHeaderNames) : undefined,
           },
-          'prowlarr search failed'
+          accessBlocked ? 'prowlarr search blocked by Cloudflare Access' : 'prowlarr search failed'
         )
         return []
       }
@@ -135,13 +135,13 @@ export function createProwlarrClient(config: ProwlarrClientConfig): ProwlarrClie
     const res = await upstream(url, {
       signal: AbortSignal.timeout(Math.min(config.timeoutMs, 10000)),
     })
-    if (res.status >= 300 && res.status < 400) {
-      throw new Error(cloudflareAccessFailureMessage('Prowlarr', res.status, customHeaderNames))
-    }
-    if (!res.ok) {
-      const body = await res.text()
+    if (!res.ok || (res.status >= 300 && res.status < 400)) {
+      const body = await res.text().catch(() => '')
       if (looksLikeCloudflareAccess(res.status, res, body)) {
         throw new Error(cloudflareAccessFailureMessage('Prowlarr', res.status, customHeaderNames))
+      }
+      if (res.status >= 300 && res.status < 400) {
+        throw new Error(`Prowlarr redirected (HTTP ${res.status})`)
       }
       throw new Error(`Prowlarr indexer discovery failed (${res.status})`)
     }

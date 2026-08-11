@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { FiArrowRight } from 'react-icons/fi'
 
 import { HealthPanel } from '@/components/health-panel'
 import { StatusDot } from '@/components/status-dot'
@@ -58,10 +59,8 @@ export default function HomePage() {
           </p>
           <div className="ui-fade-up-delay mt-8 flex flex-wrap gap-3">
             <ButtonLink href="/login">
-              Administrator sign in{' '}
-              <span aria-hidden className="ml-2">
-                →
-              </span>
+              Administrator sign in
+              <FiArrowRight className="h-4 w-4" aria-hidden />
             </ButtonLink>
             <ButtonLink href="/docs" variant="ghost">
               Read the docs
