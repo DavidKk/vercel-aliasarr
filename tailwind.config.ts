@@ -16,6 +16,7 @@ export default {
           muted: 'rgb(var(--app-muted) / <alpha-value>)',
           accent: 'rgb(var(--app-accent) / <alpha-value>)',
           accentSoft: 'rgb(var(--app-accent-soft) / <alpha-value>)',
+          ink: 'rgb(var(--app-ink) / <alpha-value>)',
           success: 'rgb(var(--app-success) / <alpha-value>)',
           successSoft: 'rgb(var(--app-success-soft) / <alpha-value>)',
           danger: 'rgb(var(--app-danger) / <alpha-value>)',
@@ -23,6 +24,10 @@ export default {
           warning: 'rgb(var(--app-warning) / <alpha-value>)',
           warningSoft: 'rgb(var(--app-warning-soft) / <alpha-value>)',
         },
+      },
+      fontFamily: {
+        display: ['var(--font-sora)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-ibm-plex-mono)', 'ui-monospace', 'monospace'],
       },
     },
   },

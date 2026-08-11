@@ -1,65 +1,73 @@
-# Aliasarr Vercel 部署
+# Aliasarr Deployment
 
-Aliasarr **只以 Vercel 为生产运行平台**。
+## Vercel
 
-## 1. 导入项目
+1. Import the repository; Framework: Next.js
+2. In Project → Environment Variables, configure bootstrap keys matching [`.env.example`](../.env.example) (**do not** put secrets in code or Git)
+3. Connect Upstash Redis via Vercel Marketplace; the integration injects `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
+4. Generate `CONFIG_ENCRYPTION_KEY`: `openssl rand -base64 32`; if this value is lost, stored connection config cannot be recovered
+5. Admin login: `ACCESS_USERNAME`, `ACCESS_PASSWORD`; production should set a high-entropy `JWT_SECRET` separately (if unset, `ACCESS_PASSWORD` is used for signing—**never** deploy without a secret)
+6. Optional Signet: `SIGNET_SDK_URL` (or `NEXT_PUBLIC_SIGNET_SDK_URL`). By default only `ACCESS_USERNAME` may log in; use `SIGNET_ALLOWED_USERS` for an explicit allowlist. When `ACCESS_2FA_SECRET` is enabled, both password login and Signet require TOTP (Signet SSO then step-up verification)
+7. After deploy, log in at `/admin/config`, enter URL, Torznab/API Key, Gist/TMDB/Bangumi credentials, and save
+8. After the page shows `AES-256-GCM`, delete legacy service URL/API Key environment variables and redeploy; keep only Upstash, encryption key, and login bootstrap variables
+9. Search route `maxDuration` in Functions—see `vercel.json` (recommend ≥ 30s)
 
-1. 将仓库推送到 GitHub / GitLab
-2. [Vercel](https://vercel.com) → Add New Project → Import
-3. Framework Preset: Next.js（自动检测）
-4. Root Directory: 仓库根目录
+**Note:** Vercel egress must reach your Prowlarr; LAN-only Prowlarr needs a public reverse proxy or tunnel.
 
-## 2. 环境变量
-
-在 Vercel Project → Settings → Environment Variables 配置：
-
-| 变量 | 必需 | 说明 |
-| --- | --- | --- |
-| `TORZNAB_API_KEY` | 是 | Sonarr 使用的 apikey（≥16 字符） |
-| `PROWLARR_URL` | 是 | Vercel 可访问的 Prowlarr 公网 URL |
-| `PROWLARR_API_KEY` | 是 | Prowlarr API Key |
-| `PROWLARR_TIMEOUT_MS` | 否 | 默认 8000 |
-| `PROWLARR_MAX_CONCURRENCY` | 否 | 默认 3 |
-| `PROWLARR_SONARR_URL` | 否 | 写入返回给 Sonarr 的下载链接 origin |
-| `ALIAS_DATA_DIR` | 否 | 默认 `data/aliases` |
-| `MAX_TITLES` / `MAX_QUERY_FORMATS_PER_TITLE` / `MAX_PROWLARR_QUERIES` | 否 | 查询放大控制 |
-| `SEARCH_RESULT_LIMIT` | 否 | 默认 100 |
-| `LOG_LEVEL` | 否 | 默认 info |
-
-`vercel.json` 已为 `/api/torznab` 设置 `maxDuration: 30`。
-
-## 3. Prowlarr 可达性
-
-Vercel Functions **无法访问纯局域网**。需要其一：
-
-- Cloudflare Tunnel
-- Cloudflare Access Service Token + 反代
-- Tailscale Funnel
-- 自建仅暴露 `/api/v1/*` 的鉴权网关
-
-**不要**把完整 Prowlarr 管理 UI 裸露到公网。
-
-若 Sonarr 在内网、搜索走公网 Prowlarr URL：可设置 `PROWLARR_SONARR_URL`，把返回的 Grab URL 改写为 Sonarr 可达地址。
-
-## 4. Sonarr 配置
-
-- URL: `https://<deployment>.vercel.app`
-- API Path: `/api/torznab`
-- API Key: 同 `TORZNAB_API_KEY`
-- Categories: `5000,5030,5040,5045`
-
-在 Sonarr 中点 Test，应成功；对已有别名剧集（如 TVDB `366625`）手动 Search，应看到 RSS 结果或空 RSS（**不是** HTML）。
-
-## 5. Smoke
+## Local
 
 ```bash
-./scripts/smoke-torznab.sh https://<deployment>.vercel.app "$TORZNAB_API_KEY"
+pnpm i
+cp .env.example .env   # .env.local also works; Next loads both
+# Set CONFIG_ENCRYPTION_KEY, Upstash (production), and Admin login variables
+pnpm dev
 ```
 
-## 6. 验收清单
+The dev server uses `.next-dev`; `pnpm build` uses `.next`—artifacts are isolated; source changes do not require restart. Restart dev only when changing `.env` or Next config.
 
-- [ ] `/api/health` 返回 JSON，且不暴露 URL/Key
-- [ ] `/api/torznab?t=caps` 返回 caps XML
-- [ ] Sonarr Test Indexer 通过
-- [ ] `tvsearch` 对配置别名剧集可返回结果或空 RSS
-- [ ] 错误 apikey 返回 Torznab error XML，非 HTML
+Local config is encrypted to `.aliasarr/config.json` (in `.gitignore`, mode 0600); it does not touch production KV and survives `pnpm dev` restarts. Production reads/writes only Upstash Redis key `aliasarr:config:v1`. Both require the same `CONFIG_ENCRYPTION_KEY` in that environment to decrypt.
+
+## Sonarr
+
+Settings → Indexers → Torznab (Custom)
+
+| Item       | Value                                |
+| ---------- | ------------------------------------ |
+| URL        | `https://<deployment>/api/torznab`   |
+| API Path   | `/api`                               |
+| API Key    | Same Torznab Key configured in Admin |
+| Categories | `5000,5030,5040,5045`                |
+
+## Radarr
+
+Same URL / API Path / API Key; Categories: `2000,2030,2040,2045`.
+
+## Prowlarr / Jackett and Application Sync
+
+Configure and enable Prowlarr / Jackett separately at `/admin/config`; choose "all enabled" or specific Indexers. URL and API Key are stored as one AES-256-GCM encrypted connection bundle.
+
+After configuring Sonarr / Radarr URL and API Key, install, update, or remove the Aliasarr Torznab Indexer on the same page via each app's `/api/v3` API—no manual entry required.
+
+Sync runs the application's Indexer Test first. If the only failure is "no results returned for current categories", the save request continues with official `forceSave=true`; connection, auth, protocol, and other test errors still abort sync to avoid saving invalid config.
+
+Aliasarr supplements Chinese alias search, so it can coexist with ordinary Indexers synced from Prowlarr to Sonarr/Radarr. If both remain, Prowlarr-synced items handle original titles and RSS; Aliasarr handles alias expansion. Do not add Aliasarr back into Prowlarr—it would create recursive search.
+
+## Gist Aliases
+
+1. Create a GitHub Gist; add files like `series-tvdb-*.yaml`, `movies-tmdb-*.yaml` (Gist has no directories—do not use `/` in filenames)
+2. Configure Gist ID and Token (gist scope) in Admin
+3. Log in at `/login` → `/admin/aliases` to edit and save
+
+Aliasarr briefly caches Gist reads and uses revision tokens to protect Admin writes. Writes within one instance serialize; if the file was changed elsewhere after open, save returns conflict and requires reopen—no silent overwrite.
+
+Lookup reads Gist first. On miss, TMDB/Bangumi are queried and media names plus candidate aliases are auto-created as YAML; existing files are not overwritten by automatic write-back. Prowlarr search results are ephemeral and are not written to Gist.
+
+## MCP
+
+See [`skills/aliasarr-mcp/SKILL.md`](../skills/aliasarr-mcp/SKILL.md). Header: `x-api-key: <Torznab API key configured in Admin>`.
+
+## Related Docs
+
+- [REQUIREMENTS.md](./REQUIREMENTS.md)
+- [ARCHITECTURE.md](./ARCHITECTURE.md)
+- [API.md](./API.md)

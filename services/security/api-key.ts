@@ -1,5 +1,4 @@
-import { timingSafeEqual } from 'node:crypto'
-import { getEnv } from '@/utils/env'
+import { timingSafeStringEqual } from '@/utils/timing-safe'
 
 export class UnauthorizedError extends Error {
   readonly status = 401
@@ -10,18 +9,11 @@ export class UnauthorizedError extends Error {
 }
 
 export function timingSafeEqualString(a: string, b: string): boolean {
-  const aBuf = Buffer.from(a)
-  const bBuf = Buffer.from(b)
-  if (aBuf.length !== bBuf.length) {
-    timingSafeEqual(aBuf, aBuf)
-    return false
-  }
-  return timingSafeEqual(aBuf, bBuf)
+  return timingSafeStringEqual(a, b)
 }
 
-export function assertTorznabApiKey(apikey: string | null | undefined): void {
-  const expected = getEnv().TORZNAB_API_KEY
-  if (!apikey || !timingSafeEqualString(apikey, expected)) {
+export function assertTorznabApiKey(apikey: string | null | undefined, expected: string | null | undefined): void {
+  if (!apikey || !expected || !timingSafeEqualString(apikey, expected)) {
     throw new UnauthorizedError()
   }
 }

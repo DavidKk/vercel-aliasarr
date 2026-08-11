@@ -1,4 +1,4 @@
-export type MediaType = 'series'
+export type MediaType = 'series' | 'movie'
 
 export interface MediaIdentity {
   tvdbId?: number

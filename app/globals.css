@@ -3,30 +3,577 @@
 @tailwind utilities;
 
 :root {
-  --app-bg: 243 239 230;
-  --app-surface: 255 252 246;
-  --app-subtle: 231 225 212;
-  --app-border: 210 200 184;
-  --app-text: 26 34 28;
-  --app-muted: 90 101 92;
-  --app-accent: 15 107 92;
-  --app-accent-soft: 220 240 235;
-  --app-success: 4 120 87;
-  --app-success-soft: 236 253 245;
-  --app-danger: 155 44 44;
-  --app-danger-soft: 254 242 242;
-  --app-warning: 180 83 9;
-  --app-warning-soft: 255 251 235;
+  /* Aliasarr UI v1 — Midnight Operations */
+  --app-bg: 7 11 20;
+  --app-surface: 15 22 36;
+  --app-subtle: 24 34 52;
+  --app-border: 51 65 86;
+  --app-text: 235 241 248;
+  --app-muted: 145 158 178;
+  --app-accent: 255 112 67;
+  --app-accent-soft: 66 33 28;
+  --app-ink: 248 250 252;
+  --app-success: 95 224 181;
+  --app-success-soft: 18 58 50;
+  --app-danger: 255 112 128;
+  --app-danger-soft: 70 28 38;
+  --app-warning: 250 196 92;
+  --app-warning-soft: 65 48 22;
+  --admin-shell: 8 13 23;
+  --admin-sidebar: 12 19 32;
+  --admin-workspace: 10 16 27;
+  --app-page-background:
+    radial-gradient(circle at 12% 0%, rgb(var(--app-accent) / 0.14), transparent 28rem),
+    radial-gradient(circle at 88% 18%, rgb(var(--app-success) / 0.08), transparent 26rem),
+    rgb(var(--app-bg));
   --background: rgb(var(--app-bg));
   --foreground: rgb(var(--app-text));
+  --font-display: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), ui-monospace, monospace;
 }
 
-body {
-  color: var(--foreground);
-  background:
-    radial-gradient(1200px 600px at 10% -10%, rgb(var(--app-accent) / 0.14), transparent 55%),
-    radial-gradient(900px 500px at 100% 0%, rgb(196 145 58 / 0.12), transparent 50%),
-    linear-gradient(180deg, rgb(var(--app-bg)), rgb(var(--app-subtle)));
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-  min-height: 100vh;
+@layer base {
+  * {
+    border-color: rgb(var(--app-border));
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-height: 100vh;
+    color: var(--foreground);
+    background: var(--app-page-background);
+    font-family: var(--font-display);
+  }
+
+  body::before {
+    position: fixed;
+    z-index: -1;
+    inset: 0;
+    content: '';
+    pointer-events: none;
+    background-image: linear-gradient(rgb(255 255 255 / 0.025) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 0.025) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: linear-gradient(to bottom, black, transparent 78%);
+  }
+
+  ::selection {
+    color: rgb(var(--app-ink));
+    background: rgb(var(--app-accent) / 0.42);
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--app-accent));
+    outline-offset: 3px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgb(var(--app-bg));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border: 3px solid rgb(var(--app-bg));
+    border-radius: 999px;
+    background: rgb(var(--app-border));
+  }
+}
+
+@layer components {
+  .admin-root {
+    background: var(--app-page-background);
+  }
+
+  .admin-header {
+    background-color: transparent;
+  }
+
+  .admin-sidebar {
+    background-color: transparent;
+  }
+
+  .admin-workspace {
+    background-color: transparent;
+  }
+
+  .admin-scroll-content {
+    scrollbar-width: none;
+  }
+
+  .admin-scroll-content::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ui-shell {
+    @apply relative z-10 mx-auto w-[min(1180px,calc(100%-2rem))] pb-20 pt-5 sm:w-[min(1180px,calc(100%-3rem))] sm:pt-7;
+  }
+
+  .ui-nav-link {
+    @apply rounded-full px-3 py-2 text-[0.72rem] font-medium text-app-muted transition duration-200 hover:bg-app-subtle/70 hover:text-app-ink;
+  }
+
+  .ui-nav-link[data-active='true'] {
+    @apply bg-app-subtle text-app-ink shadow-[inset_0_0_0_1px_rgb(var(--app-border))];
+  }
+
+  .ui-label {
+    @apply font-mono text-[0.65rem] font-medium uppercase tracking-[0.18em] text-app-muted;
+  }
+
+  .ui-input {
+    @apply w-full rounded-xl border border-app-border bg-app-bg/60 px-3.5 py-3 text-sm text-app-text outline-none transition;
+    @apply placeholder:text-app-muted/50 hover:border-app-muted/70 focus:border-app-accent focus:ring-4 focus:ring-app-accent/10;
+  }
+
+  .ui-btn {
+    @apply inline-flex items-center justify-center rounded-xl border px-4 py-2.5 text-sm font-semibold transition duration-200;
+  }
+
+  .ui-btn-primary {
+    @apply ui-btn border-app-accent bg-app-accent text-white shadow-[0_10px_30px_rgb(var(--app-accent)/0.18)] hover:-translate-y-0.5 hover:bg-[#ff8259];
+  }
+
+  .ui-btn-ghost {
+    @apply ui-btn border-app-border bg-app-surface/70 text-app-text hover:-translate-y-0.5 hover:border-app-muted hover:bg-app-subtle;
+  }
+
+  .ui-panel {
+    @apply rounded-2xl border border-app-border/80 bg-app-surface/80 shadow-[0_20px_70px_rgb(0_0_0/0.22)] backdrop-blur-xl;
+  }
+
+  .ui-skeleton {
+    position: relative;
+    overflow: hidden;
+    background: rgb(var(--app-subtle) / 0.72);
+  }
+
+  .ui-skeleton::after {
+    position: absolute;
+    inset: 0;
+    content: '';
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.08), transparent);
+    transform: translateX(-100%);
+    animation: aliasarr-skeleton 1.35s ease-in-out infinite;
+  }
+
+  .ui-chip {
+    @apply rounded-full border border-app-border/80 bg-app-subtle/70 px-2.5 py-1.5 font-mono text-[0.68rem] text-app-text;
+  }
+
+  .ui-section-title {
+    @apply font-mono text-[0.66rem] font-medium uppercase tracking-[0.18em] text-app-muted;
+  }
+
+  .ui-fade-up {
+    animation: aliasarr-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .ui-fade-up-delay {
+    animation: aliasarr-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
+  }
+
+  .ui-brand-mark {
+    animation: aliasarr-brand-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .config-liquid-carrier {
+    @apply pointer-events-none absolute top-1/2 z-[1] h-0 w-0;
+    transition: left 620ms cubic-bezier(0.7, -0.05, 0.2, 1.05);
+    will-change: left;
+  }
+
+  .config-liquid-layer {
+    @apply pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-xl;
+    contain: layout paint;
+  }
+
+  .config-liquid-ripple {
+    @apply pointer-events-none absolute left-0 top-0 -z-10 rounded-full;
+    width: calc(var(--liquid-width) + 24px);
+    height: 15px;
+    background: radial-gradient(ellipse at center, rgb(var(--app-muted) / 0.17), rgb(var(--app-subtle) / 0.08) 52%, transparent 74%);
+    filter: blur(3px);
+    opacity: 0;
+    transform: translate(-50%, -25%) scaleX(0.72);
+    animation: aliasarr-liquid-ripple 620ms ease-out;
+    will-change: transform, opacity;
+  }
+
+  .config-liquid-stream {
+    @apply pointer-events-none absolute top-1/2 z-0 h-2 rounded-full;
+    background: linear-gradient(90deg, transparent 0%, rgb(var(--app-subtle) / 0.32) 18%, rgb(var(--app-muted) / 0.18) 50%, rgb(var(--app-subtle) / 0.32) 82%, transparent 100%);
+    background-size: 220% 100%;
+    box-shadow:
+      inset 0 1px 2px rgb(255 255 255 / 0.06),
+      0 0 8px rgb(var(--app-muted) / 0.08);
+    opacity: 0;
+    transform: translateY(-50%) scaleX(0.08);
+    will-change: transform, opacity, background-position;
+  }
+
+  .config-liquid-stream.is-right {
+    transform-origin: left center;
+    animation: aliasarr-liquid-stream-right 620ms ease-out;
+  }
+
+  .config-liquid-stream.is-left {
+    transform-origin: right center;
+    animation: aliasarr-liquid-stream-left 620ms ease-out;
+  }
+
+  .config-liquid-particle {
+    @apply pointer-events-none absolute left-0 top-0 z-[2] rounded-full border border-white/25;
+    background: radial-gradient(circle at 34% 28%, rgb(255 255 255 / 0.58) 0 10%, rgb(var(--app-muted) / 0.95) 28%, rgb(var(--app-subtle) / 0.98) 72%);
+    box-shadow:
+      inset 2px 2px 4px rgb(255 255 255 / 0.1),
+      inset -2px -2px 3px rgb(0 0 0 / 0.24),
+      0 0 0 2px rgb(var(--app-subtle) / 0.3),
+      0 0 12px rgb(var(--app-accent) / 0.16);
+    transform: translate(-50%, -50%) scale(0);
+    will-change: opacity, transform;
+  }
+
+  .config-liquid-particle.is-primary {
+    width: 13px;
+    height: 9px;
+  }
+
+  .config-liquid-particle.is-secondary {
+    width: 8px;
+    height: 8px;
+  }
+
+  .config-liquid-carrier.is-moving .config-liquid-particle.is-primary {
+    animation: aliasarr-liquid-particle-primary 620ms ease-out;
+  }
+
+  .config-liquid-carrier.is-moving .config-liquid-particle.is-secondary {
+    animation: aliasarr-liquid-particle-secondary 620ms ease-out;
+  }
+
+  .config-liquid-drop {
+    @apply absolute left-0 top-0 h-8 border border-app-muted/45;
+    width: var(--liquid-width);
+    border-radius: 11px;
+    background: linear-gradient(145deg, rgb(var(--app-subtle) / 0.98), rgb(19 30 48 / 0.92));
+    background-position: 0% 50%;
+    background-size: 180% 100%;
+    box-shadow:
+      inset 6px 5px 8px rgb(0 0 0 / 0.2),
+      inset -5px -6px 8px rgb(255 255 255 / 0.08),
+      7px 9px 14px rgb(0 0 0 / 0.22),
+      0 0 18px rgb(var(--app-accent) / 0.06);
+    transform: translate(-50%, -50%);
+    transform-origin: center;
+    transition:
+      width 240ms cubic-bezier(0.16, 1, 0.3, 1),
+      height 240ms cubic-bezier(0.16, 1, 0.3, 1),
+      border-radius 280ms ease,
+      box-shadow 280ms ease;
+    will-change: width, transform, border-radius, clip-path;
+  }
+
+  .config-liquid-drop.is-initializing {
+    width: 0;
+    height: 0;
+    opacity: 0;
+    border-width: 0;
+    animation: aliasarr-liquid-drop-in 680ms cubic-bezier(0.22, 1.38, 0.36, 1) 90ms forwards;
+  }
+
+  .config-liquid-drop::before,
+  .config-liquid-drop::after {
+    @apply pointer-events-none absolute rounded-full;
+    content: '';
+    background: rgb(255 255 255 / 0.2);
+    box-shadow: 0 0 4px rgb(255 255 255 / 0.08);
+    transition:
+      opacity 180ms ease,
+      transform 240ms ease;
+  }
+
+  .config-liquid-drop::before {
+    left: 18%;
+    top: 5px;
+    width: 7px;
+    height: 7px;
+  }
+
+  .config-liquid-drop::after {
+    left: calc(18% + 9px);
+    top: 12px;
+    width: 3px;
+    height: 3px;
+  }
+
+  .config-liquid-carrier.is-right .config-liquid-drop.is-moving {
+    animation: aliasarr-liquid-flow-right 620ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .config-liquid-carrier.is-left .config-liquid-drop.is-moving {
+    animation: aliasarr-liquid-flow-left 620ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .config-liquid-drop.is-moving {
+    border-color: transparent;
+    filter: drop-shadow(1px 0 0 rgb(var(--app-muted) / 0.5)) drop-shadow(-1px 0 0 rgb(var(--app-muted) / 0.5)) drop-shadow(0 1px 0 rgb(var(--app-muted) / 0.5))
+      drop-shadow(0 -1px 0 rgb(var(--app-muted) / 0.5));
+  }
+
+  .config-liquid-carrier.is-right .config-liquid-drop.is-moving::before {
+    left: 76%;
+  }
+
+  .config-liquid-carrier.is-right .config-liquid-drop.is-moving::after {
+    left: 68%;
+  }
+}
+
+@keyframes aliasarr-fade-up {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes aliasarr-skeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes aliasarr-brand-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes aliasarr-liquid-drop-in {
+  0% {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    border-width: 0;
+    border-radius: 50%;
+    background-position: 100% 50%;
+    filter: blur(5px);
+    transform: translate(-50%, -50%);
+  }
+  22% {
+    opacity: 0.38;
+    filter: blur(2px);
+  }
+  46% {
+    opacity: 0.86;
+    width: 32px;
+    height: 32px;
+    border-width: 1px;
+    border-radius: 50%;
+    filter: blur(0);
+  }
+  68% {
+    opacity: 1;
+    width: 29px;
+    height: 29px;
+    border-radius: 58% 42% 48% 52% / 44% 58% 42% 56%;
+  }
+  100% {
+    opacity: 1;
+    width: var(--liquid-width);
+    height: 32px;
+    border-width: 1px;
+    border-radius: 11px;
+    background-position: 0% 50%;
+    filter: blur(0);
+    transform: translate(-50%, -50%);
+  }
+}
+
+@keyframes aliasarr-liquid-flow-right {
+  0% {
+    border-radius: 11px;
+    clip-path: polygon(0 20%, 8% 0, 35% 0, 65% 0, 92% 0, 100% 20%, 100% 80%, 92% 100%, 65% 100%, 35% 100%, 8% 100%, 0 80%);
+    height: 32px;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  34% {
+    border-radius: 8px 16px 16px 8px;
+    clip-path: polygon(0 36%, 12% 28%, 36% 16%, 65% 6%, 90% 0, 100% 20%, 100% 80%, 90% 100%, 65% 94%, 36% 84%, 12% 72%, 0 64%);
+    height: 36px;
+    transform: translate(calc(-50% + 3px), -50%) scaleX(1.045);
+  }
+  66% {
+    border-radius: 9px 15px 15px 9px;
+    clip-path: polygon(0 32%, 10% 24%, 38% 12%, 68% 4%, 92% 0, 100% 20%, 100% 80%, 92% 100%, 68% 96%, 38% 88%, 10% 76%, 0 68%);
+    height: 35px;
+    transform: translate(calc(-50% + 2px), -50%) scaleX(1.025);
+  }
+  84% {
+    border-radius: 10px 12px 12px 10px;
+    clip-path: polygon(0 28%, 8% 4%, 35% 1%, 65% 0, 92% 0, 100% 20%, 100% 80%, 92% 100%, 65% 100%, 35% 99%, 8% 96%, 0 72%);
+    height: 33px;
+    transform: translate(calc(-50% + 1px), -50%) scaleX(0.985);
+  }
+  100% {
+    border-radius: 11px;
+    clip-path: polygon(0 20%, 8% 0, 35% 0, 65% 0, 92% 0, 100% 20%, 100% 80%, 92% 100%, 65% 100%, 35% 100%, 8% 100%, 0 80%);
+    height: 32px;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes aliasarr-liquid-flow-left {
+  0% {
+    border-radius: 11px;
+    clip-path: polygon(0 20%, 8% 0, 35% 0, 65% 0, 92% 0, 100% 20%, 100% 80%, 92% 100%, 65% 100%, 35% 100%, 8% 100%, 0 80%);
+    height: 32px;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  34% {
+    border-radius: 16px 8px 8px 16px;
+    clip-path: polygon(100% 36%, 88% 28%, 64% 16%, 35% 6%, 10% 0, 0 20%, 0 80%, 10% 100%, 35% 94%, 64% 84%, 88% 72%, 100% 64%);
+    height: 36px;
+    transform: translate(calc(-50% - 3px), -50%) scaleX(1.045);
+  }
+  66% {
+    border-radius: 15px 9px 9px 15px;
+    clip-path: polygon(100% 32%, 90% 24%, 62% 12%, 32% 4%, 8% 0, 0 20%, 0 80%, 8% 100%, 32% 96%, 62% 88%, 90% 76%, 100% 68%);
+    height: 35px;
+    transform: translate(calc(-50% - 2px), -50%) scaleX(1.025);
+  }
+  84% {
+    border-radius: 12px 10px 10px 12px;
+    clip-path: polygon(100% 28%, 92% 4%, 65% 1%, 35% 0, 8% 0, 0 20%, 0 80%, 8% 100%, 35% 100%, 65% 99%, 92% 96%, 100% 72%);
+    height: 33px;
+    transform: translate(calc(-50% - 1px), -50%) scaleX(0.985);
+  }
+  100% {
+    border-radius: 11px;
+    clip-path: polygon(0 20%, 8% 0, 35% 0, 65% 0, 92% 0, 100% 20%, 100% 80%, 92% 100%, 65% 100%, 35% 100%, 8% 100%, 0 80%);
+    height: 32px;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes aliasarr-liquid-particle-primary {
+  0%,
+  10% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--liquid-trail-near)), calc(-50% - 9px)) scale(1);
+  }
+  62% {
+    opacity: 0.68;
+    transform: translate(calc(-50% + var(--liquid-trail-mid)), calc(-50% - 12px)) scale(0.76);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--liquid-trail-end)), calc(-50% - 15px)) scale(0.3);
+  }
+}
+
+@keyframes aliasarr-liquid-particle-secondary {
+  0%,
+  18% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0);
+  }
+  38% {
+    opacity: 0.9;
+    transform: translate(calc(-50% + var(--liquid-trail-near)), calc(-50% + 9px)) scale(1);
+  }
+  72% {
+    opacity: 0.48;
+    transform: translate(calc(-50% + var(--liquid-trail-mid)), calc(-50% + 12px)) scale(0.65);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--liquid-trail-end)), calc(-50% + 14px)) scale(0.22);
+  }
+}
+
+@keyframes aliasarr-liquid-ripple {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -25%) scaleX(0.58);
+  }
+  34% {
+    opacity: 0.52;
+    transform: translate(-50%, -25%) scaleX(0.92);
+  }
+  72% {
+    opacity: 0.3;
+    transform: translate(-50%, -25%) scaleX(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -25%) scaleX(1.12);
+  }
+}
+
+@keyframes aliasarr-liquid-stream-right {
+  0% {
+    opacity: 0;
+    background-position: 0% 50%;
+    transform: translateY(-50%) scaleX(0.08);
+  }
+  28% {
+    opacity: 0.72;
+  }
+  72% {
+    opacity: 0.42;
+    background-position: 100% 50%;
+    transform: translateY(-50%) scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    background-position: 160% 50%;
+    transform: translateY(-50%) scaleX(1);
+  }
+}
+
+@keyframes aliasarr-liquid-stream-left {
+  0% {
+    opacity: 0;
+    background-position: 160% 50%;
+    transform: translateY(-50%) scaleX(0.08);
+  }
+  28% {
+    opacity: 0.72;
+  }
+  72% {
+    opacity: 0.42;
+    background-position: 0% 50%;
+    transform: translateY(-50%) scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    background-position: -60% 50%;
+    transform: translateY(-50%) scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

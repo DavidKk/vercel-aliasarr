@@ -6,10 +6,12 @@ export interface ProwlarrCategory {
 export interface ProwlarrRelease {
   guid?: string
   title?: string
+  infoUrl?: string
   downloadUrl?: string
   magnetUrl?: string
   size?: number
   seeders?: number
+  leechers?: number
   peers?: number
   publishDate?: string
   categories?: ProwlarrCategory[] | number[]

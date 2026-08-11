@@ -1,4 +1,5 @@
 import { create } from 'xmlbuilder2'
+
 import type { TorznabItem } from './types'
 
 export function buildErrorXml(code: number, description: string): string {
@@ -23,7 +24,16 @@ export function buildRssXml(items: TorznabItem[], opts?: { offset?: number; tota
   for (const item of items) {
     const node = channel.ele('item')
     node.ele('title').txt(item.title)
-    node.ele('guid').att('isPermaLink', 'false').txt(item.guid)
+    node.ele('description')
+    node.ele('guid').txt(item.guid)
+    if (item.indexerId != null || item.indexerName) {
+      node
+        .ele('prowlarrindexer')
+        .att('id', String(item.indexerId ?? ''))
+        .att('type', 'proxy')
+        .txt(item.indexerName ?? 'Prowlarr')
+    }
+    node.ele('comments').txt(item.infoUrl ?? item.link)
     node.ele('link').txt(item.link)
     node.ele('pubDate').txt(item.pubDate.toUTCString())
     if (item.size != null) {
@@ -44,7 +54,14 @@ export function buildRssXml(items: TorznabItem[], opts?: { offset?: number; tota
     }
     if (item.peers != null) {
       node.ele('torznab:attr').att('name', 'peers').att('value', String(item.peers))
+    } else if (item.seeders != null && item.leechers != null) {
+      node
+        .ele('torznab:attr')
+        .att('name', 'peers')
+        .att('value', String(item.seeders + item.leechers))
     }
+    node.ele('torznab:attr').att('name', 'downloadvolumefactor').att('value', '1')
+    node.ele('torznab:attr').att('name', 'uploadvolumefactor').att('value', '1')
     if (item.infoHash) {
       node.ele('torznab:attr').att('name', 'infohash').att('value', item.infoHash)
     }

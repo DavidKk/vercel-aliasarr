@@ -1,9 +1,8 @@
+import { api } from '@/initializer/controller'
 import { getHealthPayload } from '@/services/app/health'
 
 export const runtime = 'nodejs'
 export const maxDuration = 10
 
-export async function GET(): Promise<Response> {
-  const body = await getHealthPayload()
-  return Response.json(body)
-}
+/** GET /api/health — public liveness / Prowlarr reachability probe. */
+export const GET = api(async () => getHealthPayload())

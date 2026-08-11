@@ -1,28 +1,27 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
-export function SiteNav({ active }: { active?: 'home' | 'admin' }) {
+import { BrandLockup } from '@/components/brand-lockup'
+import { PageHeader } from '@/components/page-header'
+
+export function SiteNav() {
   return (
-    <nav className="mb-8 flex items-center justify-between gap-4">
-      <Link href="/" className="inline-flex items-baseline gap-2 font-semibold tracking-tight">
-        Aliasarr
-        <span className="font-mono text-xs font-medium uppercase tracking-wider text-app-accent">on Vercel</span>
-      </Link>
-      <div className="flex items-center gap-4 text-sm text-app-muted">
-        <Link href="/" className={active === 'home' ? 'text-app-text' : 'hover:text-app-text'}>
-          首页
+    <nav className="ui-fade-up mb-12 flex items-center justify-between gap-4 rounded-2xl border border-app-border/70 bg-app-surface/65 p-2.5 shadow-[0_18px_60px_rgb(0_0_0/0.18)] backdrop-blur-xl sm:rounded-full sm:pl-4">
+      <BrandLockup variant="site" priority />
+      <div className="flex items-center gap-2">
+        <Link href="/docs" className="ui-nav-link whitespace-nowrap">
+          Docs
         </Link>
-        <Link href="/admin" className={active === 'admin' ? 'text-app-text' : 'hover:text-app-text'}>
-          试搜
+        <Link href="/login" className="ui-nav-link whitespace-nowrap">
+          Sign in
         </Link>
-        <a href="/api/health" target="_blank" rel="noreferrer" className="hover:text-app-text">
-          Health
-        </a>
       </div>
     </nav>
   )
 }
 
 export function Shell({ children }: { children: ReactNode }) {
-  return <div className="relative z-10 mx-auto w-[min(1080px,calc(100%-2rem))] py-5 pb-12">{children}</div>
+  return <main className="ui-shell">{children}</main>
 }
+
+export { PageHeader }

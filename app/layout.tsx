@@ -3,23 +3,24 @@ import './globals.css'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { IBM_Plex_Mono, Sora } from 'next/font/google'
 import type { ReactNode } from 'react'
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+import { buildRootMetadata } from '@/lib/seo'
+
+const sora = Sora({
+  variable: '--font-sora',
   subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
 })
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: '--font-ibm-plex-mono',
   subsets: ['latin'],
+  weight: ['400', '500'],
 })
 
-export const metadata: Metadata = {
-  title: 'Aliasarr',
-  description: 'Vercel Torznab alias indexer for Sonarr Chinese title search',
-}
+export const metadata: Metadata = buildRootMetadata()
 
 interface RootLayoutProps {
   children: ReactNode
@@ -29,10 +30,10 @@ export default function RootLayout(props: Readonly<RootLayoutProps>) {
   const { children } = props
 
   return (
-    <html lang="zh-CN">
+    <html lang="en" className="bg-app-bg">
       <Analytics />
       <SpeedInsights />
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>{children}</body>
+      <body className={`${sora.variable} ${ibmPlexMono.variable} antialiased`}>{children}</body>
     </html>
   )
 }

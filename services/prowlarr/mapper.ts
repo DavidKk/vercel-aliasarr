@@ -1,4 +1,5 @@
 import type { SearchResult } from '@/services/search/types'
+
 import type { ProwlarrRelease } from './types'
 
 export interface MapOptions {
@@ -35,11 +36,13 @@ export function mapProwlarrRelease(raw: ProwlarrRelease, opts?: MapOptions): Sea
     originalTitle: title,
     indexerId: raw.indexerId,
     indexerName: raw.indexer,
+    infoUrl: raw.infoUrl,
     downloadUrl,
     infoHash: raw.infoHash,
     size: raw.size,
     seeders: raw.seeders,
-    peers: raw.peers,
+    leechers: raw.leechers,
+    peers: raw.peers ?? (raw.seeders != null && raw.leechers != null ? raw.seeders + raw.leechers : undefined),
     publishDate: raw.publishDate,
     categories: categoryIds(raw.categories),
     protocol: raw.protocol === 'usenet' ? 'usenet' : 'torrent',

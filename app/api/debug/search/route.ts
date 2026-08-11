@@ -1,5 +1,11 @@
+import type { NextRequest } from 'next/server'
 import { z } from 'zod'
+
+import { api } from '@/initializer/controller'
+import { jsonInvalidParameters, jsonUnauthorized } from '@/initializer/response'
+import { extractApiKey } from '@/initializer/wrapper'
 import { getAppRuntime } from '@/services/app/runtime'
+import { validateCookie } from '@/services/auth/access'
 import { runDebugSearch } from '@/services/search/debug-search'
 import { assertTorznabApiKey, UnauthorizedError } from '@/services/security/api-key'
 
@@ -7,35 +13,52 @@ export const runtime = 'nodejs'
 export const maxDuration = 30
 
 const BodySchema = z.object({
-  tvdbId: z.number().int().positive(),
+  tvdbId: z.number().int().positive().optional(),
+  tmdbId: z.number().int().positive().optional(),
+  imdbId: z.string().optional(),
   season: z.number().int().nonnegative().optional(),
   episode: z.number().int().nonnegative().optional(),
+  year: z.number().int().positive().optional(),
   q: z.string().optional(),
-  apikey: z.string().min(1),
+  mediaType: z.enum(['series', 'movie']).optional(),
+  apikey: z.string().min(1).optional(),
 })
 
-export async function POST(request: Request): Promise<Response> {
+export const POST = api(async (req: NextRequest) => {
+  let json: unknown
   try {
-    const json = await request.json()
-    const body = BodySchema.parse(json)
-    assertTorznabApiKey(body.apikey)
-
-    const app = await getAppRuntime()
-    const result = await runDebugSearch(app, {
-      tvdbId: body.tvdbId,
-      season: body.season,
-      episode: body.episode,
-      q: body.q,
-    })
-
-    return Response.json(result)
-  } catch (err) {
-    if (err instanceof UnauthorizedError) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    if (err instanceof z.ZodError) {
-      return Response.json({ error: 'Invalid request', details: err.flatten() }, { status: 400 })
-    }
-    return Response.json({ error: 'Internal error' }, { status: 500 })
+    json = await req.json()
+  } catch {
+    return jsonInvalidParameters('Invalid JSON body')
   }
-}
+
+  const parsed = BodySchema.safeParse(json)
+  if (!parsed.success) {
+    return jsonInvalidParameters(parsed.error.message)
+  }
+
+  const body = parsed.data
+  const hasAdminSession = await validateCookie()
+  if (!hasAdminSession) {
+    const providedKey = body.apikey ?? extractApiKey(req)
+    if (!providedKey) return jsonUnauthorized()
+  }
+
+  const app = await getAppRuntime()
+  if (!hasAdminSession) {
+    try {
+      assertTorznabApiKey(body.apikey ?? extractApiKey(req), app.secrets.torznabApiKey)
+    } catch (error) {
+      if (error instanceof UnauthorizedError) {
+        return jsonUnauthorized()
+      }
+      throw error
+    }
+  }
+
+  if (body.tvdbId == null && body.tmdbId == null && !body.imdbId && !body.q) {
+    return jsonInvalidParameters('Provide tvdbId, tmdbId, imdbId, or q')
+  }
+
+  return runDebugSearch(app, body)
+})

@@ -1,5 +1,6 @@
 import type { MediaIdentity } from '@/utils/types'
-import type { MediaTitles, TitleAlias } from './alias-repository'
+
+import type { MediaTitles, TitleAlias } from './media-schema'
 import { toSimplified, toTraditional } from './script-convert'
 
 export interface ResolvedTitles {

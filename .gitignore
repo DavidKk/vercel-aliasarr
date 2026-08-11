@@ -1,14 +1,44 @@
+# Dependencies
 node_modules/
-.next/
-.env
-.env.local
-*.log
-.DS_Store
-coverage/
-.vercel/
-*.tsbuildinfo
 package-lock.json
+npm-shrinkwrap.json
+
+# Next.js
+.next/
+.next-dev/
+out/
+
+# Local encrypted Aliasarr config (never commit)
+.aliasarr/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Local tooling / agent scratch (regenerated or personal)
+.husky/
+.superpowers/
+.vercel/
+.turbo/
+.eslintcache
+
+# Logs & coverage
+*.log
+coverage/
 junit.xml
 test-results/
 playwright-report/
 blob-report/
+playwright/.cache/
+
+# TypeScript
+*.tsbuildinfo
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

@@ -1,16 +1,16 @@
 module.exports = {
-  /** 一行的字符数, 如果超过会进行换行 */
+  /** Max characters per line before wrapping */
   printWidth: 180,
-  /** 一个tab代表几个空格数 */
+  /** Number of spaces per tab */
   tabWidth: 2,
-  /** 是否使用tab进行缩进 */
+  /** Indent with tabs */
   useTabs: false,
-  /** 字符串是否使用单引号 */
+  /** Use single quotes for strings */
   singleQuote: true,
-  /** 行位是否使用分号 */
+  /** Semicolons at end of statements */
   semi: false,
-  /** 是否使用尾逗号 */
+  /** Use trailing commas */
   trailingComma: 'es5',
-  /** 对象大括号直接是否有空格 */
+  /** Spaces inside object braces */
   bracketSpacing: true,
 }

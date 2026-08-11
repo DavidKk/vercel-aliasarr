@@ -1,6 +1,7 @@
-import { logger } from '@/utils/logger'
 import type { SearchResult } from '@/services/search/types'
-import { mapProwlarrRelease, type MapOptions } from './mapper'
+import { logger } from '@/utils/logger'
+
+import { type MapOptions, mapProwlarrRelease } from './mapper'
 import type { ProwlarrRelease } from './types'
 
 export interface ProwlarrClientConfig {
@@ -10,21 +11,42 @@ export interface ProwlarrClientConfig {
   mapOptions?: MapOptions
 }
 
+export interface ProwlarrSearchOptions {
+  categories?: number[]
+  indexerIds?: number[]
+  signal?: AbortSignal
+}
+
 export interface ProwlarrClient {
-  search(query: string, signal?: AbortSignal): Promise<SearchResult[]>
+  search(query: string, options?: ProwlarrSearchOptions): Promise<SearchResult[]>
   ping(): Promise<boolean>
+  listIndexers(): Promise<ProwlarrIndexer[]>
+}
+
+export interface ProwlarrIndexer {
+  id: number
+  name: string
+  enable: boolean
+  protocol?: string
+  privacy?: string
 }
 
 export function createProwlarrClient(config: ProwlarrClientConfig): ProwlarrClient {
   const base = config.baseUrl.replace(/\/$/, '')
 
-  async function search(query: string, signal?: AbortSignal): Promise<SearchResult[]> {
+  async function search(query: string, options: ProwlarrSearchOptions = {}): Promise<SearchResult[]> {
     const url = new URL(`${base}/api/v1/search`)
     url.searchParams.set('query', query)
     url.searchParams.set('type', 'search')
+    for (const category of options.categories ?? []) {
+      url.searchParams.append('categories', String(category))
+    }
+    for (const indexerId of options.indexerIds ?? []) {
+      url.searchParams.append('indexerIds', String(indexerId))
+    }
 
     const timeout = AbortSignal.timeout(config.timeoutMs)
-    const combined = signal != null ? AbortSignal.any([signal, timeout]) : timeout
+    const combined = options.signal != null ? AbortSignal.any([options.signal, timeout]) : timeout
 
     try {
       const res = await fetch(url, {
@@ -32,7 +54,16 @@ export function createProwlarrClient(config: ProwlarrClientConfig): ProwlarrClie
         signal: combined,
       })
       if (!res.ok) {
-        logger.warn({ status: res.status, host: url.host, path: url.pathname }, 'prowlarr search failed')
+        logger.warn(
+          {
+            status: res.status,
+            host: url.host,
+            path: url.pathname,
+            categories: options.categories,
+            indexerIds: options.indexerIds,
+          },
+          'prowlarr search failed'
+        )
         return []
       }
       const data = (await res.json()) as ProwlarrRelease[]
@@ -63,5 +94,16 @@ export function createProwlarrClient(config: ProwlarrClientConfig): ProwlarrClie
     }
   }
 
-  return { search, ping }
+  async function listIndexers(): Promise<ProwlarrIndexer[]> {
+    const url = `${base}/api/v1/indexer`
+    const res = await fetch(url, {
+      headers: { 'X-Api-Key': config.apiKey },
+      signal: AbortSignal.timeout(Math.min(config.timeoutMs, 10000)),
+    })
+    if (!res.ok) throw new Error(`Prowlarr indexer discovery failed (${res.status})`)
+    const data = (await res.json()) as ProwlarrIndexer[]
+    return Array.isArray(data) ? data.filter((indexer) => Number.isInteger(indexer.id) && typeof indexer.name === 'string').sort((a, b) => a.name.localeCompare(b.name)) : []
+  }
+
+  return { search, ping, listIndexers }
 }

@@ -1,7 +1,7 @@
 import { TorznabError } from './errors'
 import type { TorznabRequest, TorznabType } from './types'
 
-const SUPPORTED: TorznabType[] = ['caps', 'search', 'tvsearch']
+const SUPPORTED: TorznabType[] = ['caps', 'search', 'tvsearch', 'movie']
 
 function parseOptionalInt(value: string | null): number | undefined {
   if (value == null || value === '') return undefined
@@ -31,6 +31,7 @@ export function parseTorznabQuery(searchParams: URLSearchParams): TorznabRequest
     q: searchParams.get('q') ?? undefined,
     season: parseOptionalInt(searchParams.get('season')),
     ep: parseOptionalInt(searchParams.get('ep')),
+    year: parseOptionalInt(searchParams.get('year')),
     tvdbId: parseOptionalInt(searchParams.get('tvdbid')),
     tmdbId: parseOptionalInt(searchParams.get('tmdbid')),
     imdbId: searchParams.get('imdbid') ?? undefined,

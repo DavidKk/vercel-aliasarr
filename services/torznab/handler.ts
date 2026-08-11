@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { childLogger } from '@/utils/logger'
+
 import { getAppRuntime } from '@/services/app/runtime'
 import type { SearchResult } from '@/services/search/types'
 import { assertTorznabApiKey, UnauthorizedError } from '@/services/security/api-key'
@@ -8,34 +8,46 @@ import { TorznabError } from '@/services/torznab/errors'
 import { parseTorznabQuery } from '@/services/torznab/parser'
 import type { TorznabItem } from '@/services/torznab/types'
 import { buildErrorXml, buildRssXml } from '@/services/torznab/xml-builder'
+import { childLogger } from '@/utils/logger'
 
 const XML_HEADERS = {
   'Content-Type': 'application/rss+xml; charset=utf-8',
 }
 
 export interface TorznabDeps {
+  apiKey?: string
   searchService: {
-    tvSearch: (req: ReturnType<typeof parseTorznabQuery>) => Promise<SearchResult[]>
+    search: (req: ReturnType<typeof parseTorznabQuery>) => Promise<SearchResult[]>
+    tvSearch?: (req: ReturnType<typeof parseTorznabQuery>) => Promise<SearchResult[]>
   }
 }
 
 export async function getDefaultTorznabDeps(): Promise<TorznabDeps> {
   const app = await getAppRuntime()
-  return { searchService: app.searchService }
+  return { apiKey: app.secrets.torznabApiKey, searchService: app.searchService }
 }
 
-function toItems(results: SearchResult[]): TorznabItem[] {
+function toItems(results: SearchResult[], fallbackCategories: number[]): TorznabItem[] {
   return results.map((r) => ({
     title: r.title,
     guid: r.guid,
     link: r.downloadUrl,
+    infoUrl: r.infoUrl,
+    indexerId: r.indexerId,
+    indexerName: r.indexerName,
     pubDate: r.publishDate ? new Date(r.publishDate) : new Date(),
     size: r.size,
-    categories: r.categories.length ? r.categories : [5000],
+    categories: r.categories.length ? r.categories : fallbackCategories,
     seeders: r.seeders,
+    leechers: r.leechers,
     peers: r.peers,
     infoHash: r.infoHash,
   }))
+}
+
+function defaultCategoriesForRequest(req: ReturnType<typeof parseTorznabQuery>): number[] {
+  if (req.categories.length) return req.categories
+  return req.type === 'movie' ? [2000] : [5000]
 }
 
 export async function handleTorznabRequest(url: URL, deps: TorznabDeps): Promise<Response> {
@@ -44,7 +56,7 @@ export async function handleTorznabRequest(url: URL, deps: TorznabDeps): Promise
 
   try {
     const req = parseTorznabQuery(url.searchParams)
-    assertTorznabApiKey(req.apikey)
+    assertTorznabApiKey(req.apikey, deps.apiKey)
 
     if (req.type === 'caps') {
       return new Response(buildCapsXml(), {
@@ -57,14 +69,16 @@ export async function handleTorznabRequest(url: URL, deps: TorznabDeps): Promise
       {
         type: req.type,
         tvdbId: req.tvdbId,
+        tmdbId: req.tmdbId,
         season: req.season,
         ep: req.ep,
+        year: req.year,
       },
       'torznab search'
     )
 
-    const results = await deps.searchService.tvSearch(req)
-    const xml = buildRssXml(toItems(results), {
+    const results = await deps.searchService.search(req)
+    const xml = buildRssXml(toItems(results, defaultCategoriesForRequest(req)), {
       offset: req.offset,
       total: results.length,
     })
@@ -84,6 +98,20 @@ export async function handleTorznabRequest(url: URL, deps: TorznabDeps): Promise
       })
     }
     log.error({ err: err instanceof Error ? err.message : String(err) }, 'torznab handler error')
+    return new Response(buildErrorXml(900, 'Internal error'), {
+      status: 500,
+      headers: XML_HEADERS,
+    })
+  }
+}
+
+/** Load runtime deps and always return Torznab XML (never Next HTML error pages). */
+export async function serveTorznabRequest(request: Request, loadDeps: () => Promise<TorznabDeps> = getDefaultTorznabDeps): Promise<Response> {
+  try {
+    const deps = await loadDeps()
+    return handleTorznabRequest(new URL(request.url), deps)
+  } catch (err) {
+    childLogger({ requestId: randomUUID() }).error({ err: err instanceof Error ? err.message : String(err) }, 'torznab deps error')
     return new Response(buildErrorXml(900, 'Internal error'), {
       status: 500,
       headers: XML_HEADERS,

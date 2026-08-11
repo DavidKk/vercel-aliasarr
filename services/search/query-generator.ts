@@ -5,7 +5,7 @@ function pad(n: number): string {
 }
 
 export function generateQueries(input: GenerateQueriesInput): string[] {
-  const { titles, season, episode, maxFormatsPerTitle, maxQueries } = input
+  const { titles, season, episode, year, mediaType = 'series', maxFormatsPerTitle, maxQueries } = input
   const out: string[] = []
   const seen = new Set<string>()
 
@@ -17,13 +17,19 @@ export function generateQueries(input: GenerateQueriesInput): string[] {
 
   for (const title of titles) {
     const formats: string[] = []
-    if (season != null && episode != null) {
+
+    if (mediaType === 'movie') {
+      formats.push(title)
+      if (year != null) {
+        formats.push(`${title} ${year}`)
+      }
+    } else if (season != null && episode != null) {
       formats.push(`${title} S${pad(season)}E${pad(episode)}`)
-      formats.push(`${title} 第${episode}集`)
+      formats.push(`${title} \u7b2c${episode}\u96c6`)
     } else if (season != null) {
       formats.push(`${title} S${pad(season)}`)
     } else if (episode != null) {
-      formats.push(`${title} 第${episode}集`)
+      formats.push(`${title} \u7b2c${episode}\u96c6`)
     } else {
       formats.push(title)
     }
