@@ -1,37 +1,41 @@
-# Aliasarr
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Virtual **Torznab** indexer on Vercel that expands Chinese title aliases for **Sonarr** (TV) and **Radarr** (movies), searches via **Prowlarr and/or Jackett**, and returns standard Torznab XML.
+# Aliasarr
+
+Aliasarr is a virtual **Torznab** indexer on Vercel that expands Chinese title aliases for **Sonarr** and **Radarr**, searches via **Prowlarr and/or Jackett**, and returns standard Torznab XML.
 
 ## Features
 
-- Sonarr/Radarr URL `/api/torznab` with API Path `/api` (`/api` and `/api/torznab` also remain available)
-- Alias chain: **Gist YAML first → TMDB/Bangumi on miss → automatic Gist write-back** + OpenCC
-- Admin-managed Prowlarr/Jackett upstreams and indexer selection
-- One-click install, update, and removal of Aliasarr in Sonarr/Radarr
-- Debug search UI and **login-gated Gist YAML editor**
-- HTTP **MCP** (`/api/mcp`) with SKILL resource
-- Service URLs and credentials encrypted with **AES-256-GCM** in Upstash Redis
+- **Torznab for *arr**: Sonarr/Radarr URL `/api/torznab` with API Path `/api` (`/api` and `/api/torznab` also remain available).
+- **Alias chain**: Gist YAML first → TMDB/Bangumi on miss → automatic Gist write-back, plus OpenCC.
+- **Admin console**: Prowlarr/Jackett upstreams, indexer selection, Gist YAML editor, and one-click install/update/remove in Sonarr/Radarr.
+- **HTTP MCP**: `/api/mcp` with a SKILL resource for agents.
+- **Encrypted config**: service URLs and credentials sealed with AES-256-GCM in Upstash Redis.
 
-## Quick start
+## Deploy to Vercel
 
-```bash
-pnpm i
-cp .env.example .env
-# configure Upstash, CONFIG_ENCRYPTION_KEY, and login secrets; enter integrations in /admin/services
-pnpm dev
-```
+[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FDavidKk%2Fvercel-aliasarr)
 
-- Home: `http://localhost:3000`
-- Login / admin: `/login`, `/admin`, `/admin/services`, `/admin/indexers`, `/admin/applications`, `/admin/probe`, `/admin/aliases`
-- Health: `/api/health`
+### Environment Variable Configuration
 
-## Environment
+Refer to the [`.env.example`](./.env.example) file to set the required environment variables.
 
-See [`.env.example`](./.env.example). Never commit real keys. Upstash credentials, `CONFIG_ENCRYPTION_KEY`, and Admin bootstrap credentials remain environment variables. Service URLs, API keys, provider state, and selected indexers are managed under `/admin/services`, `/admin/indexers`, and `/admin/applications`; stored credentials are never returned to the browser.
+- `CONFIG_ENCRYPTION_KEY`: AES-256-GCM master key (`openssl rand -base64 32`). If this value is lost, stored connection config cannot be recovered.
+- `ACCESS_USERNAME`: Admin username
+- `ACCESS_PASSWORD`: Admin password
+- `JWT_SECRET`: JWT signing secret (recommended; falls back to `ACCESS_PASSWORD` when unset)
+- `JWT_EXPIRES_IN`: JWT token expiration time
+- `ACCESS_2FA_SECRET`: optional TOTP secret; generate one at [vercel-2fa](https://vercel-2fa.vercel.app)
+- `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`: injected by Vercel Marketplace → Upstash Redis
 
-Production configuration is stored under `aliasarr:config:v1` in Vercel Marketplace Upstash Redis. Its connection bundle is sealed with AES-256-GCM. Local development uses the ignored, encrypted `.aliasarr/config.json`, so configuration survives dev-server restarts without writing to the remote KV. Gist is reserved for alias YAML and automatic alias write-back.
+Service URLs, API keys, Gist/TMDB/Bangumi credentials, custom headers, and selected indexers are entered in Admin after deploy — not as environment variables.
+
+## Quick Start
+
+1. Click **Deploy to Vercel**, then connect **Upstash Redis** from the Vercel Marketplace.
+2. Set `CONFIG_ENCRYPTION_KEY`, Admin login variables, and (recommended) `JWT_SECRET`.
+3. After deploy, sign in at `/login` and configure Gist, Prowlarr/Jackett, and Sonarr/Radarr under `/admin/services`, `/admin/indexers`, and `/admin/applications`.
+4. Point Sonarr and Radarr at the Torznab URL below. Vercel egress must reach Prowlarr/Jackett (LAN-only hosts need a public reverse proxy or tunnel).
 
 ## Sonarr / Radarr
 
@@ -43,31 +47,16 @@ Production configuration is stored under `aliasarr:config:v1` in Vercel Marketpl
 | Categories (Sonarr) | `5000, 5030, 5040, 5045`                    |
 | Categories (Radarr) | `2000, 2030, 2040, 2045`                    |
 
-## HTTP API (summary)
-
-| Path                   | Auth                    | Purpose                        |
-| ---------------------- | ----------------------- | ------------------------------ |
-| `/api/torznab/api`     | API key                 | Sonarr/Radarr Torznab endpoint |
-| `/api`, `/api/torznab` | API key                 | Compatible direct endpoints    |
-| `/api/health`          | public                  | Liveness                       |
-| `/api/debug/search`    | Admin cookie or API key | Debug JSON search              |
-| `/api/aliases`         | login cookie            | List/edit Gist YAML            |
-| `/api/mcp`             | API key                 | MCP JSON-RPC + SKILL           |
-| `/api/auth`            | public                  | Login / logout                 |
-
-## MCP
-
-See [`skills/aliasarr-mcp/SKILL.md`](./skills/aliasarr-mcp/SKILL.md) and [`docs/API.md`](./docs/API.md).
-
 ## Docs
 
-| Doc                                              | Description                                                     |
-| ------------------------------------------------ | --------------------------------------------------------------- |
-| [`docs/REQUIREMENTS.md`](./docs/REQUIREMENTS.md) | Product requirements (source of truth; `TOOD.md` is historical) |
-| [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | Technical design                                                |
-| [`docs/UI-DESIGN.md`](./docs/UI-DESIGN.md)       | UI direction, design tokens, and public/Admin layout rules      |
-| [`docs/API.md`](./docs/API.md)                   | HTTP / Torznab / MCP contracts                                  |
-| [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md)     | Vercel + *arr setup                                             |
+| Doc                                              | Description                                |
+| ------------------------------------------------ | ------------------------------------------ |
+| [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md)     | Vercel + *arr setup                        |
+| [`docs/API.md`](./docs/API.md)                   | HTTP / Torznab / MCP contracts             |
+| [`docs/REQUIREMENTS.md`](./docs/REQUIREMENTS.md) | Product requirements                       |
+| [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | Technical design                           |
+| [`docs/UI-DESIGN.md`](./docs/UI-DESIGN.md)       | UI direction and layout rules              |
+| [`skills/aliasarr-mcp/SKILL.md`](./skills/aliasarr-mcp/SKILL.md) | MCP skill for agents          |
 
 ## License
 
