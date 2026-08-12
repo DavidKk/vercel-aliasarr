@@ -64,7 +64,7 @@ export interface ArrSyncOptions {
 export const ALIASARR_INDEXER_SUFFIX = ' (Aliasarr)'
 export const LEGACY_ALIASARR_INDEXER_NAME = 'Aliasarr'
 const MANAGED_NAME_RE = /\(Aliasarr(?: · (?:Prowlarr|Jackett))?\)$/
-const UPSERT_CONCURRENCY = 4
+const UPSERT_CONCURRENCY = 12
 
 const providerLabel: Record<TorznabIndexerProvider, string> = {
   prowlarr: 'Prowlarr',
@@ -309,7 +309,9 @@ export function createArrClient(config: ArrClientConfig): ArrClient {
     const byName = new Map(managed.map((resource) => [resource.name ?? '', resource]))
     const desiredNames = new Set(targets.map((target) => target.name))
 
-    const upsertResults = await mapPool(targets, UPSERT_CONCURRENCY, async (target) => upsertOne(target, byName.get(target.name)))
+    // Cap parallel upserts high enough for large indexer sets without serializing under Vercel maxDuration.
+    const concurrency = Math.min(16, Math.max(UPSERT_CONCURRENCY, targets.length))
+    const upsertResults = await mapPool(targets, concurrency, async (target) => upsertOne(target, byName.get(target.name)))
 
     let created = 0
     let updated = 0

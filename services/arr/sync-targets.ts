@@ -42,49 +42,64 @@ export async function buildAliasarrIndexerTargets(input: {
 
   const prowlarrUrl = input.config.connections.prowlarrUrl
   const prowlarrSelection = input.config.indexers.prowlarr
-  if (prowlarrUrl && input.secrets.prowlarrApiKey && (prowlarrSelection.mode === 'all' || prowlarrSelection.indexerIds.length > 0)) {
-    try {
-      const prowlarr = createProwlarrClient({
-        baseUrl: prowlarrUrl,
-        apiKey: input.secrets.prowlarrApiKey,
-        timeoutMs: env.PROWLARR_TIMEOUT_MS,
-        headers: customHeadersRecord(input.secrets.prowlarrHeaders),
-      })
-      const listed = await listProwlarrIndexerTargets(prowlarr, prowlarrSelection, languages, env.PROWLARR_INDEXER_IDS, input.exists)
-      for (const indexer of listed) {
+  const jackettUrl = input.config.connections.jackettUrl
+  const jackettSelection = input.config.indexers.jackett
+
+  const loadProwlarr =
+    prowlarrUrl && input.secrets.prowlarrApiKey && (prowlarrSelection.mode === 'all' || prowlarrSelection.indexerIds.length > 0)
+      ? (async () => {
+          const prowlarr = createProwlarrClient({
+            baseUrl: prowlarrUrl,
+            apiKey: input.secrets.prowlarrApiKey,
+            timeoutMs: env.PROWLARR_TIMEOUT_MS,
+            headers: customHeadersRecord(input.secrets.prowlarrHeaders),
+          })
+          return listProwlarrIndexerTargets(prowlarr, prowlarrSelection, languages, env.PROWLARR_INDEXER_IDS, input.exists)
+        })()
+      : null
+
+  const loadJackett =
+    jackettUrl && input.secrets.jackettApiKey && (jackettSelection.mode === 'all' || jackettSelection.indexerIds.length > 0)
+      ? (async () => {
+          const jackett = createJackettClient({
+            baseUrl: jackettUrl,
+            apiKey: input.secrets.jackettApiKey,
+            timeoutMs: env.JACKETT_TIMEOUT_MS,
+            headers: customHeadersRecord(input.secrets.jackettHeaders),
+          })
+          return listJackettIndexerTargets(jackett, jackettSelection, languages)
+        })()
+      : null
+
+  const [prowlarrResult, jackettResult] = await Promise.allSettled([loadProwlarr ?? Promise.resolve(null), loadJackett ?? Promise.resolve(null)])
+
+  if (loadProwlarr) {
+    if (prowlarrResult.status === 'fulfilled' && prowlarrResult.value) {
+      for (const indexer of prowlarrResult.value) {
         targets.push({
           name: aliasarrManagedIndexerName(indexer.name, 'prowlarr'),
           baseUrl: scopedTorznabBaseUrl(origin, 'prowlarr', indexer.id),
           apiKey: input.apiKey,
         })
       }
-    } catch (error) {
+    } else if (prowlarrResult.status === 'rejected') {
       failedProviders.push('prowlarr')
-      providerErrors.push(`Prowlarr: ${error instanceof Error ? error.message : 'failed to list indexers'}`)
+      providerErrors.push(`Prowlarr: ${prowlarrResult.reason instanceof Error ? prowlarrResult.reason.message : 'failed to list indexers'}`)
     }
   }
 
-  const jackettUrl = input.config.connections.jackettUrl
-  const jackettSelection = input.config.indexers.jackett
-  if (jackettUrl && input.secrets.jackettApiKey && (jackettSelection.mode === 'all' || jackettSelection.indexerIds.length > 0)) {
-    try {
-      const jackett = createJackettClient({
-        baseUrl: jackettUrl,
-        apiKey: input.secrets.jackettApiKey,
-        timeoutMs: env.JACKETT_TIMEOUT_MS,
-        headers: customHeadersRecord(input.secrets.jackettHeaders),
-      })
-      const listed = await listJackettIndexerTargets(jackett, jackettSelection, languages)
-      for (const indexer of listed) {
+  if (loadJackett) {
+    if (jackettResult.status === 'fulfilled' && jackettResult.value) {
+      for (const indexer of jackettResult.value) {
         targets.push({
           name: aliasarrManagedIndexerName(indexer.name, 'jackett'),
           baseUrl: scopedTorznabBaseUrl(origin, 'jackett', indexer.id),
           apiKey: input.apiKey,
         })
       }
-    } catch (error) {
+    } else if (jackettResult.status === 'rejected') {
       failedProviders.push('jackett')
-      providerErrors.push(`Jackett: ${error instanceof Error ? error.message : 'failed to list indexers'}`)
+      providerErrors.push(`Jackett: ${jackettResult.reason instanceof Error ? jackettResult.reason.message : 'failed to list indexers'}`)
     }
   }
 
