@@ -18,15 +18,15 @@ const optionalPositiveIntList = z.preprocess(
 )
 
 const EnvSchema = z.object({
-  PROWLARR_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
-  PROWLARR_MAX_CONCURRENCY: z.coerce.number().int().positive().default(2),
+  PROWLARR_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
+  PROWLARR_MAX_CONCURRENCY: z.coerce.number().int().positive().default(3),
   PROWLARR_INDEXER_IDS: optionalPositiveIntList,
   PROWLARR_TV_INDEXER_IDS: optionalPositiveIntList,
   PROWLARR_MOVIE_INDEXER_IDS: optionalPositiveIntList,
-  JACKETT_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
+  JACKETT_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
   MAX_TITLES: z.coerce.number().int().positive().default(3),
   MAX_QUERY_FORMATS_PER_TITLE: z.coerce.number().int().positive().default(2),
-  MAX_PROWLARR_QUERIES: z.coerce.number().int().positive().default(6),
+  MAX_PROWLARR_QUERIES: z.coerce.number().int().positive().default(4),
   SEARCH_RESULT_LIMIT: z.coerce.number().int().positive().default(100),
   LOG_LEVEL: z.string().default('info'),
   UPSTASH_REDIS_REST_URL: optionalUrl,
