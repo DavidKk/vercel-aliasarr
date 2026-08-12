@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react'
 
+import { Button } from '@/components/ui'
+
+import { formatSingleRemoveMessage, formatSingleSyncMessage, postApplicationsAction } from '../_components/applications-actions'
 import { ApplicationStatusButton, ArrIndexerSyncRow } from '../_components/arr-indexer-sync-row'
 import { useConfigForm } from '../_components/config-provider'
 import { CustomHeadersEditor } from '../_components/custom-headers-editor'
@@ -27,8 +30,8 @@ export default function ApplicationsConfigPage() {
         const json = (await response.json()) as ApiEnvelope<{ application: ApplicationName; status: ApplicationStatus; aliasarrUrlConfigured: boolean }>
         if (!response.ok || json.code !== 0) throw new Error(json.message || 'Application status failed')
         setApplications((current) => ({
-          sonarr: current?.sonarr ?? { configured: false, reachable: false, installed: false },
-          radarr: current?.radarr ?? { configured: false, reachable: false, installed: false },
+          sonarr: current?.sonarr ?? { configured: false, reachable: false, installed: false, installedCount: 0 },
+          radarr: current?.radarr ?? { configured: false, reachable: false, installed: false, installedCount: 0 },
           [application]: json.data.status,
         }))
         setAliasarrUrlConfigured(json.data.aliasarrUrlConfigured)
@@ -41,9 +44,13 @@ export default function ApplicationsConfigPage() {
     [setError]
   )
 
+  const refreshAll = useCallback(async () => {
+    await Promise.all(applicationNames.map((application) => loadApplication(application)))
+  }, [loadApplication])
+
   useEffect(() => {
-    void Promise.all(applicationNames.map((application) => loadApplication(application)))
-  }, [loadApplication, revision])
+    void refreshAll()
+  }, [refreshAll, revision])
 
   if (!config) return null
 
@@ -52,10 +59,8 @@ export default function ApplicationsConfigPage() {
     setError(null)
     setMessage(null)
     try {
-      const response = await fetch('/api/config/applications', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ application, action }) })
-      const json = (await response.json()) as ApiEnvelope<{ created?: boolean; removed?: number }>
-      if (!response.ok || json.code !== 0) throw new Error(json.message || 'Application action failed')
-      setMessage(`${application === 'sonarr' ? 'Sonarr' : 'Radarr'} Aliasarr indexer ${action === 'sync' ? 'synchronized' : 'removed'}.`)
+      const data = await postApplicationsAction(application, action)
+      setMessage(action === 'sync' ? formatSingleSyncMessage(application, data) : formatSingleRemoveMessage(application, data))
       await loadApplication(application)
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : 'Application action failed')
@@ -64,13 +69,50 @@ export default function ApplicationsConfigPage() {
     }
   }
 
+  async function bulkAction(action: 'sync' | 'remove') {
+    setBusyApplication(`all:${action}`)
+    setError(null)
+    setMessage(null)
+    try {
+      const data = await postApplicationsAction('all', action)
+      setMessage(data.summary ?? (action === 'sync' ? 'Synced Aliasarr indexers to Sonarr and Radarr.' : 'Removed Aliasarr indexers from Sonarr and Radarr.'))
+      await refreshAll()
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : 'Application action failed')
+      await refreshAll()
+    } finally {
+      setBusyApplication(null)
+    }
+  }
+
+  const bulkBusy = busyApplication != null
+  const anyConfigured = Boolean(applications?.sonarr?.configured || applications?.radarr?.configured)
+  const bulkDisabledReason = !aliasarrUrlConfigured ? 'Generate the Server API key in Services first' : !anyConfigured ? 'Save a Sonarr or Radarr URL and API key first' : null
+
   return (
     <ConfigPage
       eyebrow="Configuration / Sync"
       title="Applications"
-      description="Connect Aliasarr to Sonarr and Radarr, then install or remove the managed indexer."
+      description="Connect Aliasarr to Sonarr and Radarr, then sync one Torznab entry per selected upstream indexer. Saving Services, Indexers, or Applications config auto-resyncs both apps."
       footer={<PageSaveBar section="applications" />}
     >
+      <ConfigCard title="Bulk sync" detail="Push or clear managed Aliasarr indexers on both applications">
+        <p className="text-sm text-app-muted">
+          Sync creates or updates entries named like <span className="font-medium text-app-text">1337x (Aliasarr · Prowlarr)</span> from the current Indexers selection. Remove
+          deletes every managed Aliasarr indexer, including the legacy bare name. Sync refreshes URL and API key only — tags, categories, and priority stay as configured in
+          Sonarr/Radarr.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Button size="sm" disabled={bulkBusy || bulkDisabledReason != null} onClick={() => void bulkAction('sync')}>
+            {busyApplication === 'all:sync' ? 'Syncing…' : 'Sync all to Sonarr & Radarr'}
+          </Button>
+          <Button size="sm" variant="danger" disabled={bulkBusy || !anyConfigured} onClick={() => void bulkAction('remove')}>
+            {busyApplication === 'all:remove' ? 'Removing…' : 'Remove all Aliasarr indexers'}
+          </Button>
+        </div>
+        {bulkDisabledReason ? <p className="mt-3 text-xs text-app-muted">{bulkDisabledReason}</p> : null}
+      </ConfigCard>
+
       {applicationNames.map((application) => {
         const status = applications?.[application]
         const label = application === 'sonarr' ? 'Sonarr' : 'Radarr'
@@ -82,10 +124,11 @@ export default function ApplicationsConfigPage() {
           : !status?.configured
             ? `Save the ${label} URL and API key first`
             : !status.reachable
-              ? `${label} must be connected before installing the indexer`
+              ? `${label} must be connected before syncing indexers`
               : !status.installed && !aliasarrUrlConfigured
                 ? 'Generate the Server API key in Services first'
                 : null
+        const installedCount = status?.installedCount ?? 0
         return (
           <ConfigCard
             key={application}
@@ -95,9 +138,9 @@ export default function ApplicationsConfigPage() {
                 ? 'URL or API key missing'
                 : !status.reachable
                   ? 'API unreachable'
-                  : status.installed
-                    ? `Aliasarr installed${status.id ? ` · #${status.id}` : ''}`
-                    : 'Ready to install'
+                  : installedCount > 0
+                    ? `Synced · ${installedCount} indexer${installedCount === 1 ? '' : 's'}`
+                    : 'Ready to sync'
             }
             status={<ApplicationStatusButton application={label} status={status} refreshing={refreshing[application]} onRefresh={() => void loadApplication(application)} />}
           >

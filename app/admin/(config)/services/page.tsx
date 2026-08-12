@@ -132,7 +132,7 @@ export default function ServicesConfigPage() {
     <ConfigPage
       eyebrow="Configuration / Connections"
       title="Services"
-      description="Each external system owns its connection fields, credentials, and actions."
+      description="Each external system owns its connection fields, credentials, and actions. Saving this page auto-resyncs managed Aliasarr indexers to Sonarr and Radarr when those apps are configured."
       footer={<PageSaveBar section="services" />}
     >
       <ConfigCard title="Aliasarr server" detail="Endpoint exposed to Sonarr, Radarr, and other Torznab clients" configured={serverKeyConfigured}>

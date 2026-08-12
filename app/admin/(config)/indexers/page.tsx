@@ -149,7 +149,7 @@ export default function IndexersConfigPage() {
     <ConfigPage
       eyebrow="Configuration / Upstream"
       title="Indexers"
-      description="Connections and source selection for Prowlarr and Jackett. Sources refresh automatically after configuration changes."
+      description="Connections and source selection for Prowlarr and Jackett. Saving this page auto-resyncs managed Aliasarr indexers to Sonarr and Radarr."
       footer={<PageSaveBar section="indexers" />}
     >
       <ConfigCard title="Search languages" detail="Global allowlist for title queries and indexer matching" configured>

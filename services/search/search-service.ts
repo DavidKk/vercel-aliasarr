@@ -46,15 +46,16 @@ async function mapPool<T, R>(items: T[], concurrency: number, fn: (item: T) => P
 function cacheKey(req: TorznabRequest): string {
   const identity = buildIdentityFromTorznab(req)
   const categories = req.categories.toSorted((a, b) => a - b).join(',') || 'all'
+  const scope = req.scope ? `:scope:${req.scope.provider}:${req.scope.indexerId}` : ''
   if (identity.mediaType === 'movie') {
-    if (req.tmdbId != null) return `search:v4:movie:tmdb:${req.tmdbId}:y${req.year ?? 'x'}:c${categories}`
-    if (req.imdbId) return `search:v4:movie:imdb:${req.imdbId}:y${req.year ?? 'x'}:c${categories}`
-    return `search:v4:movie:q:${req.q ?? ''}:y${req.year ?? 'x'}:c${categories}`
+    if (req.tmdbId != null) return `search:v4:movie:tmdb:${req.tmdbId}:y${req.year ?? 'x'}:c${categories}${scope}`
+    if (req.imdbId) return `search:v4:movie:imdb:${req.imdbId}:y${req.year ?? 'x'}:c${categories}${scope}`
+    return `search:v4:movie:q:${req.q ?? ''}:y${req.year ?? 'x'}:c${categories}${scope}`
   }
   if (req.tvdbId != null) {
-    return `search:v4:tvdb:${req.tvdbId}:s${req.season ?? 'x'}:e${req.ep ?? 'x'}:c${categories}`
+    return `search:v4:tvdb:${req.tvdbId}:s${req.season ?? 'x'}:e${req.ep ?? 'x'}:c${categories}${scope}`
   }
-  return `search:v4:q:${req.q ?? ''}:s${req.season ?? 'x'}:e${req.ep ?? 'x'}:c${categories}`
+  return `search:v4:q:${req.q ?? ''}:s${req.season ?? 'x'}:e${req.ep ?? 'x'}:c${categories}${scope}`
 }
 
 export function createSearchService(deps: SearchServiceDeps) {
@@ -85,7 +86,7 @@ export function createSearchService(deps: SearchServiceDeps) {
 
     // Network-bound: fan out query variants in parallel (wall time ≈ slowest upstream, not sum).
     const batches = await mapPool(queries, Math.max(deps.maxConcurrency, queries.length), (q) =>
-      deps.indexers.search(q, { categories: req.categories, mediaType: identity.mediaType })
+      deps.indexers.search(q, { categories: req.categories, mediaType: identity.mediaType, scope: req.scope })
     )
     const merged = filterRelevantResults(deduplicateResults(batches.flat()), titles)
     const limited = merged.slice(0, deps.resultLimit)
