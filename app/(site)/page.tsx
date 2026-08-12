@@ -6,6 +6,8 @@ import { StatusDot } from '@/components/status-dot'
 import { ButtonLink } from '@/components/ui'
 import { siteDescription } from '@/lib/seo'
 
+const GITHUB_REPO_URL = 'https://github.com/DavidKk/vercel-aliasarr'
+
 export const metadata: Metadata = {
   title: 'Aliasarr — Find every title',
   description: siteDescription,
@@ -64,6 +66,9 @@ export default function HomePage() {
             </ButtonLink>
             <ButtonLink href="/docs" variant="ghost">
               Read the docs
+            </ButtonLink>
+            <ButtonLink href={GITHUB_REPO_URL} target="_blank" rel="noreferrer" variant="ghost">
+              GitHub
             </ButtonLink>
           </div>
         </div>

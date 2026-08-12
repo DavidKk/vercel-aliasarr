@@ -4,6 +4,8 @@ import type { ReactNode } from 'react'
 import { BrandLockup } from '@/components/brand-lockup'
 import { PageHeader } from '@/components/page-header'
 
+const GITHUB_REPO_URL = 'https://github.com/DavidKk/vercel-aliasarr'
+
 export function SiteNav() {
   return (
     <nav className="ui-fade-up mb-12 flex items-center justify-between gap-4 rounded-2xl border border-app-border/70 bg-app-surface/65 p-2.5 shadow-[0_18px_60px_rgb(0_0_0/0.18)] backdrop-blur-xl sm:rounded-full sm:pl-4">
@@ -14,6 +16,9 @@ export function SiteNav() {
         </Link>
         <Link href="/login" className="ui-nav-link whitespace-nowrap">
           Sign in
+        </Link>
+        <Link href={GITHUB_REPO_URL} target="_blank" rel="noreferrer" className="ui-nav-link whitespace-nowrap">
+          GitHub
         </Link>
       </div>
     </nav>
