@@ -139,7 +139,7 @@ export function CustomHeadersEditor({
                         {editing && showReveal ? (
                           <Tooltip
                             content={revealed[index] ? 'Hide entered value' : 'Show entered value'}
-                            placement="left"
+                            placement="bottom"
                             triggerClassName="absolute inset-y-0 right-0 flex w-10 items-center justify-center"
                           >
                             <button

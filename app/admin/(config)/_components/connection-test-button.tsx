@@ -56,7 +56,9 @@ export function ConnectionTestButton({ service, label = 'Test connection' }: { s
     if (!config) return
     setState('testing')
     try {
-      const connections = Object.fromEntries(serviceConnections[service].map((name) => [name, config.connections[name]]))
+      const connections = Object.fromEntries(
+        serviceConnections[service].map((name) => [name, name === 'aliasarrUrl' ? `${window.location.origin.replace(/\/+$/, '')}/api/torznab` : config.connections[name]])
+      )
       const secrets: Record<string, unknown> = {}
       for (const name of serviceStringSecrets[service] ?? []) {
         if (secretUpdates[name] !== undefined) secrets[name] = secretUpdates[name]

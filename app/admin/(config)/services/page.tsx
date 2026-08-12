@@ -8,7 +8,7 @@ import { ButtonLink } from '@/components/ui'
 import { useConfigForm } from '../_components/config-provider'
 import { ConnectionTestButton } from '../_components/connection-test-button'
 import { PageSaveBar } from '../_components/page-save-bar'
-import { ServerApiKeyActions, ServerApiKeyField } from '../_components/server-api-key-panel'
+import { publicTorznabUrl, ServerApiKeyActions, ServerApiKeyField, TorznabUrlField } from '../_components/server-api-key-panel'
 import type { ApiEnvelope } from '../_components/types'
 import { ConfigCard, ConfigPage, ConnectionInput, SecretInput } from '../_components/ui'
 
@@ -19,12 +19,29 @@ export default function ServicesConfigPage() {
   const [serverKeyBusy, setServerKeyBusy] = useState(false)
   const [serverKeyCopied, setServerKeyCopied] = useState(false)
   const [serverKeyLoading, setServerKeyLoading] = useState(false)
+  const [torznabUrl, setTorznabUrl] = useState('')
+  const [torznabUrlCopied, setTorznabUrlCopied] = useState(false)
 
   useEffect(() => {
-    if (!serverKeyCopied) return
-    const timeout = window.setTimeout(() => setServerKeyCopied(false), 3000)
+    const next = publicTorznabUrl()
+    setTorznabUrl(next)
+  }, [])
+
+  useEffect(() => {
+    if (!config) return
+    const next = publicTorznabUrl()
+    if (config.connections.aliasarrUrl === next) return
+    updateConnection('aliasarrUrl', next)
+  }, [config, updateConnection])
+
+  useEffect(() => {
+    if (!serverKeyCopied && !torznabUrlCopied) return
+    const timeout = window.setTimeout(() => {
+      setServerKeyCopied(false)
+      setTorznabUrlCopied(false)
+    }, 3000)
     return () => window.clearTimeout(timeout)
-  }, [serverKeyCopied])
+  }, [serverKeyCopied, torznabUrlCopied])
 
   useEffect(() => {
     if (!serverKeyConfigured) {
@@ -51,18 +68,20 @@ export default function ServicesConfigPage() {
   }, [revision, serverKeyConfigured, setError])
 
   if (!config) return null
-  const gistId = config.connections.gistId.trim()
+  const currentConfig = config
+  const gistId = currentConfig.connections.gistId.trim()
 
-  async function copyServerKey() {
-    if (!serverApiKey) return
+  async function copyText(value: string, successMessage: string, mark: 'key' | 'url') {
+    if (!value) return
     setServerKeyBusy(true)
     setError(null)
     try {
-      await navigator.clipboard.writeText(serverApiKey)
-      setServerKeyCopied(true)
-      setMessage('Server API key copied to the clipboard.')
+      await navigator.clipboard.writeText(value)
+      if (mark === 'key') setServerKeyCopied(true)
+      else setTorznabUrlCopied(true)
+      setMessage(successMessage)
     } catch (copyError) {
-      setError(copyError instanceof Error ? copyError.message : 'Unable to copy Server API key')
+      setError(copyError instanceof Error ? copyError.message : 'Unable to copy to the clipboard')
     } finally {
       setServerKeyBusy(false)
     }
@@ -81,6 +100,19 @@ export default function ServicesConfigPage() {
       const json = (await response.json()) as ApiEnvelope<{ apiKey: string; revision: string }>
       if (!response.ok || json.code !== 0) throw new Error(json.message || 'Server API key generation failed')
       setServerApiKey(json.data.apiKey)
+      const hostTorznabUrl = publicTorznabUrl()
+      const persist = await fetch('/api/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          config: { ...currentConfig, connections: { ...currentConfig.connections, aliasarrUrl: hostTorznabUrl } },
+          secrets: {},
+          revision: json.data.revision,
+          section: 'services',
+        }),
+      })
+      const persistJson = (await persist.json()) as ApiEnvelope<{ revision: string }>
+      if (!persist.ok || persistJson.code !== 0) throw new Error(persistJson.message || 'Unable to persist Torznab URL')
       try {
         await navigator.clipboard.writeText(json.data.apiKey)
         setServerKeyCopied(true)
@@ -103,24 +135,19 @@ export default function ServicesConfigPage() {
       description="Each external system owns its connection fields, credentials, and actions."
       footer={<PageSaveBar section="services" />}
     >
-      <ConfigCard
-        title="Aliasarr server"
-        detail="Endpoint exposed to Sonarr, Radarr, and other Torznab clients"
-        configured={Boolean(config.connections.aliasarrUrl && secretStatus?.torznabApiKey)}
-      >
+      <ConfigCard title="Aliasarr server" detail="Endpoint exposed to Sonarr, Radarr, and other Torznab clients" configured={serverKeyConfigured}>
         <div className="grid items-start gap-4 md:grid-cols-2">
-          <ConnectionInput
-            label="Torznab URL"
-            placeholder="https://aliasarr.example.com/api/torznab"
-            value={config.connections.aliasarrUrl}
-            onChange={(value) => updateConnection('aliasarrUrl', value)}
+          <TorznabUrlField
+            url={torznabUrl || config.connections.aliasarrUrl}
+            copied={torznabUrlCopied}
+            onCopy={() => void copyText(torznabUrl || config.connections.aliasarrUrl, 'Torznab URL copied to the clipboard.', 'url')}
           />
           <ServerApiKeyField
             apiKey={serverApiKey}
             configured={serverKeyConfigured}
             busy={serverKeyBusy || serverKeyLoading}
             copied={serverKeyCopied}
-            onCopy={() => void copyServerKey()}
+            onCopy={() => void copyText(serverApiKey, 'Server API key copied to the clipboard.', 'key')}
           />
         </div>
         <ServerApiKeyActions configured={serverKeyConfigured} busy={serverKeyBusy} onGenerate={() => void generateServerKey()} />

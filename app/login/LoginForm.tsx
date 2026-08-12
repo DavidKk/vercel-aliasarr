@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useRef, useState } from 'react'
 
 import { BrandLogo } from '@/components/brand-logo'
 import { SignetLoginButton } from '@/components/signet-login-button'
@@ -25,16 +25,22 @@ export function LoginForm(props: Readonly<LoginFormProps>) {
   const [rememberMe, setRememberMe] = useState(true)
   const [error, setError] = useState<string | null>(signetError ? signetErrorMessage(signetError) : signet2fa ? 'Enter the authenticator code to finish Signet sign-in.' : null)
   const [loading, setLoading] = useState(false)
+  const loadingRef = useRef(false)
+  const credentialsRef = useRef({ username: '', password: '', rememberMe: true })
+  credentialsRef.current = { username, password, rememberMe }
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault()
+  async function submitLogin(otpOverride?: string) {
+    if (loadingRef.current) return
+    loadingRef.current = true
     setLoading(true)
     setError(null)
+    const otp = otpOverride ?? token
+    const { username: user, password: pass, rememberMe: remember } = credentialsRef.current
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(signet2fa ? { signet2fa: true, token } : { username, password, token, rememberMe }),
+        body: JSON.stringify(signet2fa ? { signet2fa: true, token: otp } : { username: user, password: pass, token: otp, rememberMe: remember }),
       })
       const json = await res.json().catch(() => null)
       if (!res.ok || json?.code !== 0) {
@@ -45,9 +51,23 @@ export function LoginForm(props: Readonly<LoginFormProps>) {
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign-in failed')
-    } finally {
+      loadingRef.current = false
       setLoading(false)
     }
+  }
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault()
+    await submitLogin()
+  }
+
+  function onOtpComplete(code: string) {
+    if (signet2fa) {
+      void submitLogin(code)
+      return
+    }
+    const { username: user, password: pass } = credentialsRef.current
+    if (enable2FA && user.trim() && pass) void submitLogin(code)
   }
 
   return (
@@ -63,12 +83,12 @@ export function LoginForm(props: Readonly<LoginFormProps>) {
         </p>
       </div>
       {signet2fa ? (
-        <OtpInput value={token} required onChange={setToken} />
+        <OtpInput value={token} required onChange={setToken} onComplete={onOtpComplete} />
       ) : (
         <>
           <Input label="Username" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" required />
           <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
-          {enable2FA ? <OtpInput value={token} required onChange={setToken} /> : null}
+          {enable2FA ? <OtpInput value={token} required onChange={setToken} onComplete={onOtpComplete} /> : null}
           <div>
             <Checkbox label="Remember me on this device" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
             <p className="mt-1.5 pl-6 text-[0.65rem] leading-5 text-app-muted">
