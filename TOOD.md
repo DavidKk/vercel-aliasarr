@@ -1,99 +1,96 @@
-# Sonarr 中文别名搜索代理需求文档
+# Sonarr Chinese Alias Search Proxy Requirements (Historical Draft)
 
-## 1. 项目背景
+> **Historical note:** This is the original requirements draft for Aliasarr. The formal, implementation-aligned specification is [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md). Content below is the full English translation of this draft.
 
-Sonarr 在搜索剧集资源时，通常依赖 TVDB 等元数据中的主标题、英文标题或外部媒体 ID。
+## 1. Project Background
 
-对于中文剧集、国产剧、港台剧、中文纪录片，以及部分使用中文译名发布的日韩剧集，资源站中的资源标题可能只包含：
+When Sonarr searches for series resources, it usually relies on primary titles, English titles, or external media IDs from TVDB and other metadata.
 
-* 中文原名
-* 中文译名
-* 繁体中文名
-* 站点常用简称
-* 中文季数、集数表达
-* 与 TVDB 英文主标题差异较大的名称
+For Chinese series, domestic productions, Hong Kong/Taiwan dramas, Chinese documentaries, and some Japanese/Korean series released under Chinese translated names, indexer release titles may contain only:
 
-例如 Sonarr 搜索：
+- Chinese original names
+- Chinese translated names
+- Traditional Chinese names
+- Site-common abbreviations
+- Chinese season and episode expressions
+- Names that differ greatly from TVDB English primary titles
+
+Example Sonarr search:
 
 ```text
 Joy of Life S02E12
 ```
 
-而资源站实际发布：
+Actual indexer releases:
 
 ```text
-庆余年 第二季 第12集 2160P
-庆余年2.E12.WEB-DL
-慶餘年.S02E12
+Qing Yu Nian Season 2 Episode 12 2160P
+Qing Yu Nian 2.E12.WEB-DL
+Qing Yu Nian (traditional) S02E12
 ```
 
-即使资源站中存在对应资源，Sonarr 也可能因为搜索词不匹配而无法找到。
+Even when the resource exists on indexers, Sonarr may fail to find it due to search term mismatch.
 
-本项目计划实现一个兼容 Torznab 协议的虚拟 Indexer，部署在 Vercel 等 Serverless 平台中，作为 Sonarr 的补充搜索入口。
+This project implements a Torznab-compatible virtual Indexer on Vercel or similar serverless platforms as a supplementary Sonarr search entry.
 
-该服务接收 Sonarr 的搜索请求，将英文标题或媒体 ID 转换、扩展为中文原名、简体名、繁体名及其他别名，再调用 Prowlarr 搜索真实 Indexer，最终将结果以标准 Torznab XML 返回给 Sonarr。
+The service receives Sonarr search requests, converts and expands English titles or media IDs into Chinese original, simplified, traditional, and other aliases, searches real Indexers via Prowlarr, and returns standard Torznab XML to Sonarr.
 
 ---
 
-## 2. 项目定位
+## 2. Project Positioning
 
-项目暂定名称：
+Working names:
 
 ```text
 Sonarr Alias Indexer
-```
-
-也可以使用：
-
-```text
 Chinese Torznab Proxy
 Aliasarr
 TitleBridge
 CN Indexer Proxy
 ```
 
-项目本质上是：
+Essentially:
 
-> 一个兼容 Torznab 协议、支持多语言标题扩展和 Prowlarr 聚合搜索的虚拟 Indexer。
+> A Torznab-compatible virtual Indexer supporting multilingual title expansion and Prowlarr aggregate search.
 
-它不是：
+It is **not**:
 
-* Torrent 下载器
-* Torrent 文件存储服务
-* 独立种子搜索引擎
-* Sonarr 反向代理
-* Prowlarr 替代品
-* 自动爬取私有站点的爬虫
+- A torrent downloader
+- Torrent file storage service
+- Standalone torrent search engine
+- Sonarr reverse proxy
+- Prowlarr replacement
+- Automatic private site scraper
 
-在 Sonarr 中，它表现为一个普通的自定义 Torznab Indexer。
+In Sonarr it appears as an ordinary custom Torznab Indexer.
 
 ---
 
-## 3. 建设目标
+## 3. Build Goals
 
-### 3.1 核心目标
+### 3.1 Core Goals
 
-在不修改 Sonarr 和 Prowlarr 源代码的情况下，提升 Sonarr 对中文资源标题的搜索覆盖率。
+Without modifying Sonarr or Prowlarr source code, improve Sonarr search coverage for Chinese release titles.
 
-系统需要实现：
+The system must:
 
-1. 接收 Sonarr 标准 Torznab 搜索请求。
-2. 识别剧集对应的 TVDB、TMDB 等媒体 ID。
-3. 获取剧集的中文原名、简体名、繁体名、英文名及别名。
-4. 根据季、集信息生成多组查询关键词。
-5. 调用 Prowlarr 搜索现有 Indexer。
-6. 合并并去重多个搜索结果。
-7. 将结果转换为 Sonarr 可识别的 Torznab XML。
-8. 尽可能保持原始下载链路不变。
-9. 在代理不可用时，不影响 Sonarr 原有 Indexer。
+1. Receive standard Sonarr Torznab search requests
+2. Identify TVDB, TMDB, and other media IDs
+3. Obtain Chinese original, simplified, traditional, English, and alias titles
+4. Generate multiple query keywords from season/episode info
+5. Search existing Indexers via Prowlarr
+6. Merge and deduplicate search results
+7. Convert results to Sonarr-recognizable Torznab XML
+8. Keep original download chain unchanged where possible
+9. When proxy is unavailable, not affect Sonarr's original Indexers
 
-### 3.2 首期目标
+### 3.2 First-Phase Goals
 
-第一阶段将服务作为 Sonarr 的补充 Indexer，而不是替代全部 Prowlarr Indexer。
+Phase one deploys as supplementary Indexer, not replacing all Prowlarr Indexers:
 
 ```text
 Sonarr
-├── Prowlarr 同步的普通 Indexer
+├── Ordinary Indexers synced from Prowlarr
 └── Sonarr Alias Indexer
         └── Prowlarr
                 ├── Indexer A
@@ -101,114 +98,101 @@ Sonarr
                 └── Indexer C
 ```
 
-这样可以：
+Benefits:
 
-* 保留原有搜索能力
-* 降低系统故障影响
-* 对比中文代理带来的新增结果
-* 避免一次性重构现有链路
-* 逐步验证标题转换效果
-
----
-
-## 4. 非目标
-
-首个版本暂不处理以下内容：
-
-1. 不主动爬取 Torrent 网站页面。
-2. 不实现独立 DHT 搜索。
-3. 不存储或分发 Torrent 文件。
-4. 不取代 Sonarr 的质量规则。
-5. 不取代 Sonarr 的剧集管理能力。
-6. 不通过大模型决定所有搜索结果。
-7. 不自动修改 Sonarr 中的剧集主标题。
-8. 不保证识别完全非标准的中文集数表达。
-9. 不直接管理 Prowlarr 中的 Indexer 账号。
-10. 不处理资源站登录、验证码和反爬机制。
+- Preserve original search capability
+- Reduce blast radius of failures
+- Compare gains from Chinese proxy
+- Avoid one-shot refactor of existing chain
+- Gradually validate title conversion effectiveness
 
 ---
 
-## 5. 用户场景
+## 4. Non-Goals
 
-### 5.1 中文剧集搜索
+First version explicitly excludes:
 
-Sonarr 中剧集主标题为：
+1. Active crawling of torrent site pages
+2. Standalone DHT search
+3. Storing or distributing torrent files
+4. Replacing Sonarr quality rules
+5. Replacing Sonarr series management
+6. Using LLMs for all search results
+7. Auto-modifying series primary titles in Sonarr
+8. Guaranteeing non-standard Chinese episode expressions
+9. Direct management of Prowlarr Indexer accounts
+10. Site login, CAPTCHA, and anti-bot handling
+
+---
+
+## 5. User Scenarios
+
+### 5.1 Chinese Series Search
+
+Sonarr primary title:
 
 ```text
 Joy of Life
 ```
 
-用户搜索第二季第十二集。
-
-代理根据 TVDB ID 获取：
+User searches season 2 episode 12. Proxy resolves via TVDB ID:
 
 ```text
 Joy of Life
-庆余年
-慶餘年
-庆余年 第二季
-庆余年2
+Qing Yu Nian
+Qing Yu Nian (traditional)
+Qing Yu Nian Season 2
+Qing Yu Nian 2
 ```
 
-生成查询：
+Generates queries:
 
 ```text
 Joy of Life S02E12
-庆余年 S02E12
-慶餘年 S02E12
-庆余年 第二季 第12集
-庆余年2 12
+Qing Yu Nian S02E12
+Qing Yu Nian (traditional) S02E12
+Qing Yu Nian Season 2 Episode 12
+Qing Yu Nian 2 12
 ```
 
-最终将多个查询结果合并返回。
+Returns merged results.
 
-### 5.2 中文原名被英文标题覆盖
+### 5.2 Chinese Original Overwritten by English
 
-部分国产剧在 Sonarr 中使用英文译名，但资源站仅使用原始中文名。
+Some domestic series use English names in Sonarr but indexers use Chinese originals only. Prefer original-language titles by external media ID, not machine translation from English.
 
-代理应优先根据外部媒体 ID 获取原始语言标题，而不是直接将英文标题机器翻译成中文。
+### 5.3 Simplified / Traditional Search
 
-### 5.3 简繁体资源搜索
+Same series may use simplified or traditional titles on different sites. Support both; script conversion supplements but must not override verified official aliases.
 
-同一剧集在不同站点中可能使用简体或繁体标题。
+### 5.4 Chinese Episode Formats
 
-代理应支持：
-
-```text
-庆余年
-慶餘年
-```
-
-简繁体转换可以作为补充，但不能覆盖人工确认的正式别名。
-
-### 5.4 中文集数格式
-
-资源站可能使用：
+Indexers may use:
 
 ```text
 S02E12
 EP12
 E12
-第12集
-12集
-第二季第十二集
+Episode 12
+12 episodes
+Season 2 Episode Twelve
 ```
 
-首期优先支持数字集数：
+First release prioritizes numeric episodes:
 
 ```text
 S02E12
 EP12
 E12
-第12集
+Episode 12
 12
 ```
 
-中文数字转换可以在后续版本加入。
+Chinese numeral conversion can follow in later versions.
 
 ---
 
-## 6. 总体架构
+## 6. Overall Architecture
 
 ```text
 ┌─────────────┐
@@ -219,24 +203,21 @@ E12
        ▼
 ┌─────────────────────────┐
 │ Sonarr Alias Indexer    │
-│ 部署于 Vercel           │
+│ Deployed on Vercel      │
 │                         │
-│ 1. 参数解析             │
-│ 2. 标题解析             │
-│ 3. 别名查询             │
-│ 4. 查询扩展             │
-│ 5. Prowlarr 搜索        │
-│ 6. 结果合并             │
-│ 7. Torznab XML 输出     │
+│ 1. Parameter parse      │
+│ 2. Title parse          │
+│ 3. Alias lookup         │
+│ 4. Query expansion      │
+│ 5. Prowlarr search      │
+│ 6. Result merge         │
+│ 7. Torznab XML output   │
 └────────────┬────────────┘
              │ Prowlarr API
              ▼
 ┌─────────────────────────┐
 │       Prowlarr          │
-│                         │
-│ Indexer A               │
-│ Indexer B               │
-│ Indexer C               │
+│ Indexer A / B / C       │
 └────────────┬────────────┘
              ▼
        Torrent Indexers
@@ -244,9 +225,9 @@ E12
 
 ---
 
-## 7. Sonarr 接入方式
+## 7. Sonarr Integration
 
-在 Sonarr 中新增自定义 Torznab Indexer：
+Add custom Torznab Indexer in Sonarr:
 
 ```text
 Settings
@@ -256,7 +237,7 @@ Settings
 → Custom
 ```
 
-参考配置：
+Reference config:
 
 ```text
 Name:
@@ -269,19 +250,19 @@ API Path:
 /api/torznab
 
 API Key:
-由代理服务生成的访问密钥
+Access key generated by proxy service
 
 Categories:
 5000, 5030, 5040, 5045
 ```
 
-Sonarr 将请求：
+Caps request:
 
 ```text
 GET /api/torznab?t=caps&apikey=xxx
 ```
 
-搜索时请求：
+Search request:
 
 ```text
 GET /api/torznab
@@ -296,29 +277,29 @@ GET /api/torznab
 
 ---
 
-## 8. 核心功能需求
+## 8. Core Functional Requirements
 
-## 8.1 Torznab 能力声明
+### 8.1 Torznab Capability Declaration
 
-系统需要实现：
+Implement:
 
 ```text
 GET /api/torznab?t=caps
 ```
 
-返回标准 Torznab Caps XML，至少声明：
+Return standard Torznab Caps XML declaring at least:
 
-* 普通搜索
-* TV 搜索
-* 查询关键词
-* 季数
-* 集数
-* TVDB ID
-* TMDB ID
-* TV 分类
-* 最大返回条数
+- General search
+- TV search
+- Query keywords
+- Season
+- Episode
+- TVDB ID
+- TMDB ID
+- TV categories
+- Max results
 
-首期建议支持参数：
+First release parameters:
 
 ```text
 q
@@ -331,11 +312,9 @@ limit
 offset
 ```
 
----
+### 8.2 Search Request Parsing
 
-## 8.2 搜索请求解析
-
-系统需要解析：
+Parse:
 
 ```text
 t
@@ -351,179 +330,142 @@ offset
 apikey
 ```
 
-搜索类型至少支持：
+At least support:
 
 ```text
 t=tvsearch
 t=search
 ```
 
-当搜索类型不支持时，返回明确的 Torznab 错误，而不是返回 HTML 页面。
+Unsupported types return explicit Torznab errors, not HTML pages.
 
----
+### 8.3 Series Identity Resolution
 
-## 8.3 剧集身份识别
-
-推荐识别优先级：
+Priority:
 
 ```text
 TVDB ID
 → TMDB ID
 → IMDb ID
-→ Sonarr 传入标题
+→ title from Sonarr
 ```
 
-当存在媒体 ID 时，不应仅根据标题猜测剧集。
-
-需要设计统一媒体实体：
+When media IDs exist, do not guess series from title alone.
 
 ```typescript
 interface MediaIdentity {
-  tvdbId?: number;
-  tmdbId?: number;
-  imdbId?: string;
-  primaryTitle?: string;
-  year?: number;
-  mediaType: "series";
+  tvdbId?: number
+  tmdbId?: number
+  imdbId?: string
+  primaryTitle?: string
+  year?: number
+  mediaType: 'series'
 }
 ```
 
----
+### 8.4 Title Alias Resolution
 
-## 8.4 标题别名获取
+Sources:
 
-标题数据可来自：
+1. Local manual alias library
+2. TVDB metadata
+3. TMDB metadata
+4. Title from Sonarr
+5. Simplified/traditional conversion
+6. Third-party Chinese media data (later)
+7. Agent completion results
 
-1. 本地人工别名库
-2. TVDB 元数据
-3. TMDB 元数据
-4. Sonarr 提供的标题
-5. 简繁体转换
-6. 后续接入的第三方中文影视数据源
-7. Agent 补全结果
-
-别名结构建议：
+Alias structure:
 
 ```typescript
 interface TitleAlias {
-  title: string;
-  language?: string;
-  region?: string;
-  script?: "simplified" | "traditional" | "latin" | "other";
-  type:
-    | "original"
-    | "official"
-    | "translation"
-    | "romanized"
-    | "site-alias"
-    | "manual"
-    | "generated";
-  priority: number;
-  verified: boolean;
+  title: string
+  language?: string
+  region?: string
+  script?: 'simplified' | 'traditional' | 'latin' | 'other'
+  type: 'original' | 'official' | 'translation' | 'romanized' | 'site-alias' | 'manual' | 'generated'
+  priority: number
+  verified: boolean
 }
-```
 
-媒体标题结构：
-
-```typescript
 interface MediaTitles {
-  mediaId: string;
-  primaryTitle: string;
-  originalTitle?: string;
-  aliases: TitleAlias[];
-  updatedAt: string;
+  mediaId: string
+  primaryTitle: string
+  originalTitle?: string
+  aliases: TitleAlias[]
+  updatedAt: string
 }
 ```
 
----
+### 8.5 Title Priority
 
-## 8.5 标题优先级
-
-对于原始语言为中文的剧集：
+Original language Chinese:
 
 ```text
-人工确认中文名
-→ 中文原名
-→ 简体中文官方名
-→ 繁体中文官方名
-→ 站点常用别名
-→ 英文官方名
-→ Sonarr 当前标题
-→ 自动生成标题
+Verified manual Chinese
+→ Chinese original
+→ Simplified official
+→ Traditional official
+→ Site-common aliases
+→ English official
+→ Sonarr current title
+→ Auto-generated title
 ```
 
-对于日韩剧集：
+Japanese/Korean:
 
 ```text
-人工确认中文译名
-→ 中文官方译名
-→ 原始日文或韩文名
-→ 罗马音
-→ 英文标题
+Verified Chinese translation
+→ Official Chinese translation
+→ Original JA/KO
+→ Romanization
+→ English title
 ```
 
-对于欧美剧集：
+Western:
 
 ```text
-英文主标题
-→ 中文官方译名
-→ 港台译名
-→ 其他别名
+English primary
+→ Official Chinese translation
+→ HK/TW translation
+→ Other aliases
 ```
 
-首期可以重点优化原始语言为中文的剧集。
+First release focuses on original-language Chinese series.
 
----
+### 8.6 Query Generation
 
-## 8.6 查询词生成
-
-系统需要根据标题、季数、集数生成多个搜索表达式。
-
-例如：
+Example title `Qing Yu Nian`, season 2, episode 12:
 
 ```text
-标题：庆余年
-季：2
-集：12
+Qing Yu Nian S02E12
+Qing Yu Nian S2E12
+Qing Yu Nian EP12
+Qing Yu Nian E12
+Qing Yu Nian Episode 12
+Qing Yu Nian Season 2 12
+Qing Yu Nian 2 12
 ```
 
-候选查询：
+Default limits:
 
 ```text
-庆余年 S02E12
-庆余年 S2E12
-庆余年 EP12
-庆余年 E12
-庆余年 第12集
-庆余年 第二季 12
-庆余年2 12
+Max 3 titles
+Max 2 query formats per title
+Max 6 Prowlarr queries per request
 ```
 
-首期建议控制查询数量，避免一次搜索触发过多上游请求。
-
-默认限制：
+Priority queries:
 
 ```text
-最多使用 3 个标题
-每个标题最多生成 2 个查询格式
-一次请求最多执行 6 个 Prowlarr 查询
+Chinese title + SxxExx
+English title + SxxExx
+Chinese title + Episode x
 ```
 
-优先查询：
+### 8.7 Prowlarr Search
 
-```text
-中文标题 + SxxExx
-英文标题 + SxxExx
-中文标题 + 第x集
-```
-
----
-
-## 8.7 Prowlarr 搜索
-
-服务通过 Prowlarr API 执行搜索。
-
-配置项：
+Via Prowlarr API.
 
 ```env
 PROWLARR_URL=https://prowlarr.example.com
@@ -532,110 +474,83 @@ PROWLARR_TIMEOUT_MS=8000
 PROWLARR_MAX_CONCURRENCY=3
 ```
 
-搜索要求：
+Requirements:
 
-1. 多个查询可以并发执行。
-2. 需要限制最大并发数。
-3. 每个上游请求必须设置超时。
-4. 单个 Indexer 失败不能导致全部请求失败。
-5. 记录每个查询返回的结果数量。
-6. 不将 Prowlarr API Key 返回给 Sonarr。
-7. 不在日志中输出完整敏感 URL。
+1. Multiple queries may run concurrently
+2. Cap max concurrency
+3. Timeout every upstream request
+4. Single Indexer failure must not fail all requests
+5. Log result count per query
+6. Do not return Prowlarr API Key to Sonarr
+7. Do not log full sensitive URLs
 
----
+### 8.8 Search Result Merge
 
-## 8.8 搜索结果合并
-
-不同查询可能返回相同资源，需要执行去重。
-
-推荐去重优先级：
+Dedup priority:
 
 ```text
 InfoHash
 → GUID
 → Magnet URI
 → Download URL
-→ 标准化标题 + 文件大小
+→ Normalized title + file size
 ```
-
-结果模型建议：
 
 ```typescript
 interface SearchResult {
-  guid: string;
-  title: string;
-  originalTitle: string;
-  indexerId?: number;
-  indexerName?: string;
-  downloadUrl: string;
-  infoHash?: string;
-  size?: number;
-  seeders?: number;
-  peers?: number;
-  publishDate?: string;
-  categories: number[];
-  protocol?: "torrent" | "usenet";
+  guid: string
+  title: string
+  originalTitle: string
+  indexerId?: number
+  indexerName?: string
+  downloadUrl: string
+  infoHash?: string
+  size?: number
+  seeders?: number
+  peers?: number
+  publishDate?: string
+  categories: number[]
+  protocol?: 'torrent' | 'usenet'
 }
 ```
 
-合并时需要保留：
+Preserve: original release title, source Indexer, size, publish time, seeders, download URL, categories, GUID, InfoHash.
 
-* 原始 Release 标题
-* 来源 Indexer
-* 文件大小
-* 发布时间
-* Seeder 数量
-* 下载地址
-* 分类
-* GUID
-* InfoHash
+### 8.9 Release Title Normalization
 
----
+Sonarr may fail to parse pure Chinese release titles.
 
-## 8.9 Release 标题规范化
-
-Sonarr 可能无法正确解析纯中文 Release 标题。
-
-例如：
+Example:
 
 ```text
-庆余年 第二季 第12集 4K 国语中字
+Qing Yu Nian Season 2 Episode 12 4K Mandarin Subs
 ```
 
-代理可生成用于 Sonarr 判断的规范化标题：
+May generate normalized title:
 
 ```text
 Joy.of.Life.S02E12.2160p.WEB-DL
 ```
 
-但需要遵守以下原则：
+Rules:
 
-1. 只转换已确认的剧名。
-2. 只规范化季数和集数。
-3. 不虚构分辨率。
-4. 不虚构片源类型。
-5. 不虚构编码格式。
-6. 不虚构发布组。
-7. 保留原始标题用于日志和后续追溯。
-
-推荐结果模型同时保存：
+1. Convert confirmed series names only
+2. Normalize season/episode only
+3. Do not fabricate resolution, source, codec, or release group
+4. Keep original title for audit
 
 ```typescript
 {
-  originalTitle: "庆余年 第二季 第12集 4K 国语中字",
+  originalTitle: "Qing Yu Nian Season 2 Episode 12 4K Mandarin Subs",
   normalizedTitle: "Joy.of.Life.S02E12.2160p.WEB-DL"
 }
 ```
 
-首期可以先不修改 Release 标题，只观察 Sonarr 的识别情况，再决定是否启用规范化。
+First release may skip title rewrite and observe Sonarr recognition first.
 
----
+### 8.10 Torznab XML Output
 
-## 8.10 Torznab XML 输出
-
-服务需要把聚合结果转换为标准 RSS/Torznab XML。
-
-每个结果至少返回：
+Each result at minimum:
 
 ```text
 title
@@ -648,29 +563,17 @@ seeders
 peers
 ```
 
-响应 Header：
-
 ```http
 Content-Type: application/rss+xml; charset=utf-8
 ```
 
-不得返回：
+Must not return `application/json`, `text/html`, or Vercel default error pages. Errors should use Torznab-compatible format where possible.
 
-```text
-application/json
-text/html
-Vercel 默认错误页面
-```
+### 8.11 Download Chain
 
-即使发生错误，也应尽量返回 Torznab 兼容错误格式。
+First release should not proxy torrent files through Vercel.
 
----
-
-## 8.11 下载链路
-
-首期建议不通过 Vercel 代理 Torrent 文件。
-
-搜索链路：
+Search chain:
 
 ```text
 Sonarr
@@ -678,100 +581,55 @@ Sonarr
 → Prowlarr
 ```
 
-下载链路：
+Download chain:
 
 ```text
 Sonarr
 → Prowlarr Grab URL
-→ 真实 Indexer
+→ Real Indexer
 ```
 
-需要确保：
+Ensure:
 
-* Sonarr 能访问返回的 Prowlarr 下载地址。
-* 返回地址不暴露不必要的站点凭据。
-* Prowlarr 地址对 Sonarr 可达。
-* Vercel 不承担 Torrent 文件中转流量。
+- Sonarr can reach Prowlarr download URLs
+- Returned URLs do not expose unnecessary site credentials
+- Prowlarr address is reachable from Sonarr
+- Vercel does not carry torrent file traffic
 
-可以分别配置：
+Optional split config:
 
 ```env
 PROWLARR_UPSTREAM_URL=https://public-prowlarr-api.example.com
 PROWLARR_SONARR_URL=http://prowlarr:9696
 ```
 
-其中：
+- `PROWLARR_UPSTREAM_URL`: called by Vercel
+- `PROWLARR_SONARR_URL`: written into links returned to Sonarr
 
-* `PROWLARR_UPSTREAM_URL`：供 Vercel 调用。
-* `PROWLARR_SONARR_URL`：写入返回给 Sonarr 的链接。
-
-如果无法安全地进行地址转换，首期可以保持 Prowlarr 原始 Grab URL。
+If safe rewrite is not possible, keep Prowlarr original Grab URL in first release.
 
 ---
 
-## 9. 标题别名库
+## 9. Title Alias Library
 
-## 9.1 存储方案
+### 9.1 Storage Options
 
-首期可以选择：
+First release options:
 
-* Vercel Postgres
-* Supabase PostgreSQL
-* Neon PostgreSQL
-* Upstash Redis
-* Git 仓库中的 YAML 或 JSON
-* Vercel KV
+- Vercel Postgres
+- Supabase PostgreSQL
+- Neon PostgreSQL
+- Upstash Redis
+- YAML or JSON in Git repo
+- Vercel KV
 
-推荐使用 PostgreSQL 保存正式数据，Redis 用于缓存。
+Recommended: PostgreSQL for authoritative data, Redis for cache.
 
-数据表示例：
+See [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) for schema examples.
 
-### media
+### 9.2 Manual Configuration Format
 
-```sql
-CREATE TABLE media (
-  id UUID PRIMARY KEY,
-  tvdb_id INTEGER,
-  tmdb_id INTEGER,
-  imdb_id VARCHAR(32),
-  primary_title TEXT NOT NULL,
-  original_language VARCHAR(16),
-  release_year INTEGER,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
-```
-
-### media_alias
-
-```sql
-CREATE TABLE media_alias (
-  id UUID PRIMARY KEY,
-  media_id UUID NOT NULL,
-  title TEXT NOT NULL,
-  language VARCHAR(16),
-  region VARCHAR(16),
-  script VARCHAR(16),
-  alias_type VARCHAR(32),
-  priority INTEGER DEFAULT 0,
-  verified BOOLEAN DEFAULT FALSE,
-  source VARCHAR(32),
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
-```
-
-建议建立唯一索引：
-
-```text
-media_id + normalized_title
-```
-
----
-
-## 9.2 人工配置格式
-
-为方便早期维护，可以支持 YAML 导入：
+YAML import example:
 
 ```yaml
 media:
@@ -780,19 +638,17 @@ media:
   primaryTitle: Joy of Life
   originalLanguage: zh
   aliases:
-    - title: 庆余年
+    - title: Qing Yu Nian
       type: original
       script: simplified
       priority: 100
       verified: true
-
-    - title: 慶餘年
+    - title: Qing Yu Nian (traditional)
       type: translation
       script: traditional
       priority: 90
       verified: true
-
-    - title: 庆余年2
+    - title: Qing Yu Nian 2
       type: site-alias
       script: simplified
       priority: 80
@@ -801,161 +657,122 @@ media:
 
 ---
 
-## 10. 缓存设计
+## 10. Cache Design
 
-需要缓存以下内容：
+### 10.1 Media Metadata Cache
 
-### 10.1 媒体元数据缓存
-
-缓存键：
+Keys:
 
 ```text
 media:tvdb:{tvdbId}
 media:tmdb:{tmdbId}
 ```
 
-建议有效期：
+TTL: 7 to 30 days
 
-```text
-7 天至 30 天
-```
+### 10.2 Search Result Cache
 
-### 10.2 搜索结果缓存
+Key includes media ID, season, episode, query title set, Indexer scope.
 
-缓存键可以包含：
-
-```text
-媒体 ID
-季数
-集数
-查询标题集合
-Indexer 范围
-```
-
-例如：
+Example:
 
 ```text
 search:tvdb:366625:s02:e12
 ```
 
-建议有效期：
+TTL: 5 to 30 minutes
 
-```text
-5 分钟至 30 分钟
-```
+Notes:
 
-需要注意：
-
-* 交互搜索可以接受短缓存。
-* RSS 搜索需要避免缓存过久。
-* 新发布剧集不应使用数小时缓存。
-* 空结果建议使用更短缓存，例如 1 至 3 分钟。
+- Interactive search: short cache OK
+- RSS: avoid long cache
+- New episodes: not hours-long cache
+- Empty results: shorter cache, 1 to 3 minutes
 
 ---
 
-## 11. Agent 能力设计
+## 11. Agent Capability Design
 
-Agent 不是首期核心依赖。
+Agent is not first-release core.
 
-推荐将 Agent 定位为“别名补全助手”，而不是实时搜索执行器。
+Role: alias completion assistant, not real-time search executor.
 
-### 11.1 Agent 使用场景
+Triggers:
 
-当出现以下情况时调用 Agent：
+- Media ID cannot match Chinese name
+- Conflicting Chinese titles
+- Suspected machine translation error
+- Site abbreviation needed
+- Manual backfill request
+- Extract aliases from historical releases
 
-* 媒体 ID 无法匹配中文名。
-* 多个中文标题存在冲突。
-* 标题疑似机器翻译错误。
-* 需要识别资源站常用简称。
-* 人工后台请求补充别名。
-* 需要从历史 Release 标题提取别名。
-
-### 11.2 Agent 输出
-
-Agent 只能输出候选，不应直接写入已验证别名：
+Agent output is candidate only:
 
 ```json
 {
   "mediaId": "tvdb:366625",
   "candidates": [
     {
-      "title": "庆余年",
+      "title": "Qing Yu Nian",
       "type": "original",
       "confidence": 0.98,
-      "reason": "与中文原始剧名一致"
+      "reason": "Matches Chinese original series name"
     },
     {
-      "title": "庆余年2",
+      "title": "Qing Yu Nian 2",
       "type": "site-alias",
       "confidence": 0.72,
-      "reason": "常用于第二季资源标题"
+      "reason": "Common in season 2 release titles"
     }
   ]
 }
 ```
 
-推荐流程：
+Flow:
 
 ```text
-Agent 生成候选
-→ 人工确认
-→ 写入别名库
-→ 后续搜索直接复用
+Agent generates candidates
+→ Manual confirmation
+→ Write to alias library
+→ Reuse in later searches
 ```
 
 ---
 
-## 12. 管理后台方向
+## 12. Admin Direction
 
-首期不要求完整后台，可以先提供简单管理页面。
+Full admin not required initially. Basic capabilities:
 
-基础功能：
+1. Query media by TVDB ID
+2. View current titles and aliases
+3. Add manual aliases
+4. Adjust alias priority
+5. Mark verified flag
+6. Disable bad aliases
+7. View recent searches
+8. View query expansion
+9. View Prowlarr result counts
+10. Manual test for specific series
 
-1. 按 TVDB ID 查询媒体。
-2. 查看当前标题和别名。
-3. 新增人工别名。
-4. 修改别名优先级。
-5. 标记别名是否已验证。
-6. 禁用错误别名。
-7. 查看最近搜索记录。
-8. 查看查询扩展结果。
-9. 查看 Prowlarr 返回数量。
-10. 手动测试指定剧集。
-
-后续可以增加：
-
-* Agent 推荐别名审核
-* Search Replay
-* 错误查询分析
-* 资源站别名统计
-* 不同 Indexer 的标题习惯分析
-* 别名命中率统计
+Later: Agent review, Search Replay, error analysis, site alias stats, Indexer title habits, hit rate stats.
 
 ---
 
-## 13. API 设计
+## 13. API Design
 
-## 13.1 Torznab API
+### 13.1 Torznab API
 
 ```text
 GET /api/torznab
 ```
 
-支持：
+Supports: `t=caps`, `t=search`, `t=tvsearch`
 
-```text
-t=caps
-t=search
-t=tvsearch
-```
-
-## 13.2 健康检查
+### 13.2 Health Check
 
 ```text
 GET /api/health
 ```
-
-返回：
 
 ```json
 {
@@ -966,20 +783,15 @@ GET /api/health
 }
 ```
 
-健康检查不应暴露：
+Must not expose Prowlarr URL, API Key, database address, or Indexer credentials.
 
-* Prowlarr URL
-* API Key
-* 数据库地址
-* Indexer 凭据
-
-## 13.3 调试搜索
+### 13.3 Debug Search
 
 ```text
 POST /api/debug/search
 ```
 
-请求：
+Request:
 
 ```json
 {
@@ -989,83 +801,67 @@ POST /api/debug/search
 }
 ```
 
-返回：
+Response:
 
 ```json
 {
   "media": {
     "primaryTitle": "Joy of Life",
-    "aliases": ["庆余年", "慶餘年"]
+    "aliases": ["Qing Yu Nian", "Qing Yu Nian (traditional)"]
   },
-  "queries": [
-    "庆余年 S02E12",
-    "慶餘年 S02E12",
-    "Joy of Life S02E12"
-  ],
+  "queries": ["Qing Yu Nian S02E12", "Qing Yu Nian (traditional) S02E12", "Joy of Life S02E12"],
   "resultCount": 18,
   "deduplicatedCount": 9
 }
 ```
 
-调试接口必须额外鉴权，不能公开访问。
+Debug endpoint must be authenticated; not public.
 
 ---
 
-## 14. 鉴权与安全
+## 14. Authentication and Security
 
-## 14.1 Sonarr 到代理
+### 14.1 Sonarr to Proxy
 
-Sonarr 请求必须携带：
-
-```text
-apikey
-```
-
-代理需要校验：
+Sonarr requests must include `apikey`. Validate against:
 
 ```env
 TORZNAB_API_KEY=***
 ```
 
-推荐使用常量时间比较，避免简单字符串比较带来的时序问题。
+Use constant-time comparison.
 
-## 14.2 代理到 Prowlarr
-
-使用：
+### 14.2 Proxy to Prowlarr
 
 ```env
 PROWLARR_API_KEY=***
 ```
 
-禁止：
+Never:
 
-* 将 API Key 写入前端代码。
-* 将 API Key 返回给 Sonarr。
-* 将完整 API Key 输出到日志。
-* 将站点 Cookie 或 passkey 写入数据库日志。
+- Put API Key in frontend code
+- Return API Key to Sonarr
+- Log full API Key
+- Log site cookies or passkeys
 
-## 14.3 Prowlarr 公网访问
+### 14.3 Prowlarr Public Access
 
-如果 Prowlarr 位于局域网，而 Vercel 位于公网，需要提供安全访问方式。
+If Prowlarr is on LAN and Vercel is public, secure access options:
 
-可选技术：
+- Cloudflare Tunnel
+- Cloudflare Access Service Token
+- Dedicated API Gateway
+- Authenticated reverse proxy
+- Tailscale Funnel
+- Lightweight self-hosted gateway
 
-* Cloudflare Tunnel
-* Cloudflare Access Service Token
-* 独立 API Gateway
-* 带鉴权的反向代理
-* Tailscale Funnel
-* 自建轻量网关
-
-不建议直接把完整 Prowlarr 管理界面裸露到公网。
-
-可以考虑仅暴露代理所需的 Prowlarr API 路径，并增加额外鉴权。
+Do not expose full Prowlarr management UI publicly. Expose only required API paths with extra auth if possible.
 
 ---
 
-## 15. Vercel 部署设计
+## 15. Vercel Deployment Design
 
-推荐技术栈：
+Recommended stack:
 
 ```text
 Next.js
@@ -1075,548 +871,273 @@ PostgreSQL
 Redis / KV
 ```
 
-也可以使用纯 Node.js Serverless Function。
+Or plain Node.js Serverless Function.
 
-### 15.1 Vercel 适合承担
+### 15.1 Vercel Suitable For
 
-* Torznab HTTP 接口
-* 标题映射
-* 查询扩展
-* Prowlarr API 调用
-* XML 生成
-* 缓存
-* 轻量管理后台
+- Torznab HTTP interface
+- Title mapping
+- Query expansion
+- Prowlarr API calls
+- XML generation
+- Cache
+- Lightweight admin
 
-### 15.2 需要注意
+### 15.2 Considerations
 
-* Serverless 执行时间限制
-* 多次 Prowlarr 搜索可能超时
-* 冷启动
-* 上游 Indexer 响应慢
-* XML 响应格式
-* 并发和请求限流
-* Vercel 无法直接访问局域网地址
-* 不适合中转大型 Torrent 文件
+- Serverless execution time limits
+- Multiple Prowlarr searches may timeout
+- Cold start
+- Slow upstream Indexers
+- XML response format
+- Concurrency and rate limits
+- Vercel cannot reach pure LAN addresses
+- Unsuitable for large torrent file proxy
 
-### 15.3 建议超时配置
+### 15.3 Suggested Timeouts
 
 ```text
-单个 Prowlarr 查询：5 至 8 秒
-整体搜索：15 至 25 秒
-最大并发查询数：3
-最大扩展查询数：6
+Single Prowlarr query: 5 to 8 seconds
+Overall search: 15 to 25 seconds
+Max concurrent queries: 3
+Max expanded queries: 6
 ```
 
-搜索超时后，应返回已完成的部分结果，而不是全部失败。
+On timeout return partial completed results, not total failure.
 
 ---
 
-## 16. 可选技术方案
+## 16. Optional Technical Choices
 
-## 16.1 Web 框架
+### 16.1 Web Framework
 
-推荐：
+Recommended: Next.js (Vercel-native, API + admin, TypeScript, simple env management).
 
-```text
-Next.js
-```
+Alternatives: Hono, Fastify, Express, NestJS, Go. For API-only, Hono or Fastify is lighter.
 
-优点：
+### 16.2 XML Generation
 
-* 适合直接部署 Vercel
-* 可同时实现 API 和管理后台
-* TypeScript 类型统一
-* 部署和环境变量管理简单
+Options: `fast-xml-parser`, `xmlbuilder2`, custom templates. Prefer XML builder to avoid escaping issues. Escape `& < > " '`.
 
-备选：
+### 16.3 Script Conversion
 
-```text
-Hono
-Fastify
-Express
-NestJS
-Go
-```
+OpenCC / opencc-js. Supplement candidates only; cannot replace authoritative title data.
 
-如果仅做 API，Hono 或 Fastify 会更轻。
+### 16.4 Database
 
-## 16.2 XML 生成
+PostgreSQL recommended for media mapping, aliases, review state, search logs, hit stats.
 
-可选：
+### 16.5 Cache
 
-* `fast-xml-parser`
-* `xmlbuilder2`
-* 自定义 XML 模板
+Upstash Redis / Vercel KV for metadata cache, search cache, rate limiting, distributed locks, short empty-result cache.
 
-推荐使用 XML Builder，避免字符串拼接导致转义问题。
+### 16.6 Validation
 
-需要正确转义：
+Zod for env, Prowlarr responses, admin params, alias structures.
 
-```text
-&
-<
->
-"
-'
-```
+### 16.7 Logging
 
-## 16.3 简繁转换
-
-可使用：
-
-```text
-OpenCC
-opencc-js
-```
-
-简繁转换只能生成补充候选，不能替代正式标题数据。
-
-## 16.4 数据库
-
-推荐：
-
-```text
-PostgreSQL
-```
-
-适合保存：
-
-* 媒体映射
-* 标题别名
-* 人工审核状态
-* 搜索记录
-* Alias 命中统计
-
-## 16.5 缓存
-
-推荐：
-
-```text
-Upstash Redis
-Vercel KV
-```
-
-适合：
-
-* 元数据缓存
-* 搜索结果缓存
-* 请求限流
-* 分布式锁
-* 空结果短缓存
-
-## 16.6 数据校验
-
-推荐：
-
-```text
-Zod
-```
-
-用于：
-
-* 环境变量校验
-* Prowlarr API 响应校验
-* 管理接口参数校验
-* 别名数据结构校验
-
-## 16.7 日志
-
-可以使用：
-
-```text
-Pino
-OpenTelemetry
-Vercel Logs
-Sentry
-```
-
-日志需要包含：
-
-```text
-requestId
-搜索类型
-媒体 ID
-季数
-集数
-生成查询数量
-Prowlarr 请求数量
-原始结果数量
-去重后数量
-总耗时
-错误类型
-```
+Pino, OpenTelemetry, Vercel Logs, Sentry. Include requestId, search type, media ID, season/episode, query counts, upstream request count, raw/dedup counts, duration, error type.
 
 ---
 
-## 17. 可观测性
+## 17. Observability
 
-需要关注以下指标：
-
-```text
-搜索请求总数
-搜索成功率
-搜索平均耗时
-P95 搜索耗时
-Prowlarr 超时次数
-别名扩展次数
-中文别名命中率
-新增结果数量
-去重比例
-空结果比例
-Torznab 错误次数
-```
-
-重点指标：
-
-### 中文代理新增结果率
+Track:
 
 ```text
-通过中文别名获得、普通英文搜索无法获得的结果数量
+Total search requests
+Search success rate
+Average search duration
+P95 search duration
+Prowlarr timeout count
+Alias expansion count
+Chinese alias hit rate
+New result count
+Dedup ratio
+Empty result ratio
+Torznab error count
 ```
 
-### 别名有效率
+Key metrics:
 
-```text
-产生有效搜索结果的别名数量
-÷
-所有参与搜索的别名数量
-```
+**Chinese proxy new result rate** — results found via Chinese aliases not found by English search alone
 
-### 查询放大倍数
+**Alias effectiveness** — aliases producing results / aliases used
 
-```text
-实际 Prowlarr 搜索次数
-÷
-Sonarr 搜索请求次数
-```
+**Query amplification** — Prowlarr searches / Sonarr requests
 
-需要控制查询放大，避免给 Prowlarr 和 Tracker 带来过大压力。
+Control amplification to protect Prowlarr and trackers.
 
 ---
 
-## 18. 异常处理
+## 18. Error Handling
 
-### Prowlarr 不可用
+**Prowlarr unavailable:** empty valid Torznab RSS or standard error; no Vercel HTML error page.
 
-返回空的合法 Torznab RSS，或返回标准错误。
+**Partial query timeout:** return completed query results.
 
-不返回 Vercel HTML 错误页。
+**No title mapping:** continue with Sonarr original query.
 
-### 部分查询超时
+**Metadata source down:** use cache; fallback to original title without cache.
 
-返回其他已完成查询的结果。
+**XML generation failure:** log request ID, return Torznab error.
 
-### 标题映射不存在
-
-使用 Sonarr 原始查询继续搜索。
-
-### 媒体元数据源不可用
-
-使用缓存数据；没有缓存时退回原始标题。
-
-### XML 生成失败
-
-记录请求 ID，返回 Torznab 错误。
-
-### API Key 错误
-
-返回未授权错误，不泄露配置信息。
+**API Key wrong:** unauthorized; do not leak config.
 
 ---
 
-## 19. 性能要求
+## 19. Performance Requirements
 
-首期建议目标：
+First-release targets:
 
 ```text
-caps 请求：500ms 内
-缓存命中的搜索：2 秒内
-普通搜索：15 秒内
-P95 搜索：25 秒内
-单次搜索最大结果：100 条
-单次搜索最大扩展查询：6 次
+caps: within 500ms
+Cache-hit search: within 2s
+Normal search: within 15s
+P95 search: within 25s
+Max results per search: 100
+Max expanded queries: 6
 ```
 
-系统应避免：
-
-* 每个别名生成十几个查询。
-* 对所有 Indexer 重复发送完全相同的请求。
-* 每次请求都重新查询全部外部元数据。
-* 每次请求都调用大模型。
-* 同一个剧集短时间重复查询无缓存。
+Avoid: dozens of queries per alias, duplicate requests to all Indexers, full metadata fetch every request, LLM every request, uncached repeat lookups.
 
 ---
 
-## 20. MVP 范围
+## 20. MVP Scope
 
-第一阶段只实现：
+Phase one implements:
 
-1. Vercel 部署。
-2. Torznab `caps`。
-3. Torznab `tvsearch`。
-4. Sonarr API Key 鉴权。
-5. Prowlarr API 搜索。
-6. TVDB ID 标题映射。
-7. 本地或数据库别名表。
-8. 简繁体补充。
-9. 最多 3 个标题扩展。
-10. 查询结果合并和去重。
-11. 标准 Torznab XML 返回。
-12. 基础请求日志。
-13. 健康检查。
-14. 作为 Sonarr 补充 Indexer 接入。
+1. Vercel deployment
+2. Torznab caps
+3. Torznab tvsearch
+4. Sonarr API Key auth
+5. Prowlarr API search
+6. TVDB ID title mapping
+7. Local or database alias table
+8. Script supplement
+9. Max 3 title expansion
+10. Merge and dedupe
+11. Standard Torznab XML
+12. Basic request logging
+13. Health check
+14. Supplementary Sonarr Indexer integration
 
-MVP 暂不实现：
+MVP excludes:
 
-* Agent 自动确认别名
-* 完整管理后台
-* Release 标题重写
-* Torrent 文件代理
-* 自动同步 Prowlarr Indexer
-* DHT 抓取
-* 网页爬虫
-* 多用户系统
-* 复杂权限系统
-
----
-
-## 21. 后续阶段
-
-### 第二阶段：可维护性
-
-* 标题别名管理页面
-* 搜索调试页面
-* TVDB、TMDB 自动补全
-* 别名命中统计
-* Search Replay
-* 错误别名禁用
-* Release 标题规范化开关
-
-### 第三阶段：智能别名
-
-* Agent 推荐中文别名
-* 根据历史 Release 学习站点别名
-* 自动发现高频简称
-* 人工审核工作流
-* 不同 Indexer 使用不同标题策略
-
-### 第四阶段：智能搜索策略
-
-* 根据历史结果选择最佳查询格式
-* 根据 Indexer 特征决定简体或繁体
-* 自动降低无效别名优先级
-* 动态控制查询数量
-* 结果质量重排
-* 发布组可信度评分
+- Agent auto-confirm aliases
+- Full admin UI
+- Release title rewrite
+- Torrent file proxy
+- Auto-sync Prowlarr Indexers
+- DHT scraping
+- Web crawling
+- Multi-user system
+- Complex RBAC
 
 ---
 
-## 22. 验收标准
+## 21. Later Phases
 
-### 基础接入
+**Phase 2: Maintainability** — alias admin, search debug UI, TVDB/TMDB auto-fill, hit stats, Search Replay, disable bad aliases, normalization toggle
 
-* Sonarr 可以成功测试并保存该 Torznab Indexer。
-* `caps` 返回格式正确。
-* Sonarr 可以发起剧集搜索。
-* 服务可以调用 Prowlarr 并获取结果。
-* 搜索结果可以正常显示在 Sonarr 中。
+**Phase 3: Smart aliases** — Agent suggestions, learn from releases, discover abbreviations, review workflow, per-Indexer title strategy
 
-### 中文扩展
+**Phase 4: Adaptive search** — best query format from history, script strategy per Indexer, deprioritize ineffective aliases, dynamic query count, quality rerank, release group scoring
 
-对于已有别名配置的中文剧集：
+---
 
-* 服务能够通过 TVDB ID 找到中文原名。
-* 至少生成一个中文搜索词。
-* 可以同时保留英文搜索。
-* 简繁体结果可以正确合并。
-* 重复资源不会大量重复展示。
+## 22. Acceptance Criteria
 
-### 稳定性
+**Basic integration:** Sonarr tests and saves Indexer; caps correct; search works; Prowlarr results display in Sonarr.
 
-* 单个查询失败不会导致全部搜索失败。
-* Prowlarr 不可用时不会返回 HTML。
-* 日志中不出现完整 API Key。
-* Vercel 不代理大型 Torrent 文件。
-* 原有 Sonarr Indexer 不受代理故障影响。
+**Chinese expansion:** find Chinese original via TVDB ID; at least one Chinese query; English preserved; script merge correct; dedupe effective.
 
-### 效果验证
+**Stability:** single query failure not global; Prowlarr down returns no HTML; no full API Key in logs; no large torrent proxy; original Indexers unaffected.
 
-选取至少 10 部中文剧集进行验证：
+**Effect validation:** at least 10 Chinese series; compare normal vs proxy result counts for effective additions, wrong matches, latency, amplification, Sonarr release recognition.
+
+---
+
+## 23. Recommended First-Release Stack
 
 ```text
-普通 Sonarr 搜索结果数
-对比
-中文别名代理搜索结果数
-```
-
-至少确认：
-
-* 有效新增结果
-* 错误匹配数量
-* 搜索耗时变化
-* 查询放大倍数
-* Sonarr Release 识别成功率
-
----
-
-## 23. 推荐首版技术栈
-
-```text
-运行平台：
-Vercel
-
-语言：
-TypeScript
-
-框架：
-Next.js 或 Hono
-
-协议：
-Torznab
-Prowlarr REST API
-
-数据库：
-PostgreSQL
-
-缓存：
-Upstash Redis
-
-简繁转换：
-opencc-js
-
-XML：
-xmlbuilder2
-
-校验：
-Zod
-
-日志：
-Pino + Vercel Logs
-
-错误监控：
-Sentry，可选
+Platform: Vercel
+Language: TypeScript
+Framework: Next.js or Hono
+Protocol: Torznab, Prowlarr REST API
+Database: PostgreSQL
+Cache: Upstash Redis
+Script: opencc-js
+XML: xmlbuilder2
+Validation: Zod
+Logging: Pino + Vercel Logs
+Monitoring: Sentry (optional)
 ```
 
 ---
 
-## 24. 推荐目录结构
+## 24. Recommended Directory Layout
 
 ```text
 src/
 ├── app/
 │   ├── api/
-│   │   ├── torznab/
-│   │   │   └── route.ts
-│   │   ├── health/
-│   │   │   └── route.ts
-│   │   └── debug/
-│   │       └── search/
-│   │           └── route.ts
+│   │   ├── torznab/route.ts
+│   │   ├── health/route.ts
+│   │   └── debug/search/route.ts
 │   └── admin/
-│
 ├── modules/
 │   ├── torznab/
-│   │   ├── parser.ts
-│   │   ├── caps.ts
-│   │   ├── xml-builder.ts
-│   │   └── errors.ts
-│   │
 │   ├── media/
-│   │   ├── identity.ts
-│   │   ├── title-resolver.ts
-│   │   ├── alias-repository.ts
-│   │   └── metadata-provider.ts
-│   │
 │   ├── search/
-│   │   ├── query-generator.ts
-│   │   ├── search-service.ts
-│   │   ├── result-merger.ts
-│   │   ├── deduplicator.ts
-│   │   └── title-normalizer.ts
-│   │
 │   ├── prowlarr/
-│   │   ├── client.ts
-│   │   ├── mapper.ts
-│   │   └── types.ts
-│   │
 │   ├── cache/
-│   │   └── cache-service.ts
-│   │
 │   └── security/
-│       ├── api-key.ts
-│       └── rate-limit.ts
-│
 ├── db/
-│   ├── schema.ts
-│   └── migrations/
-│
 └── shared/
-    ├── env.ts
-    ├── logger.ts
-    └── types.ts
 ```
+
+See [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) for the current implementation layout.
 
 ---
 
-## 25. 关键设计原则
+## 25. Key Design Principles
 
-1. **Sonarr 无感接入**
-
-   对 Sonarr 来说，服务只是一个标准 Torznab Indexer。
-
-2. **媒体 ID 优先**
-
-   优先使用 TVDB、TMDB 等 ID，不依赖英文标题直接翻译。
-
-3. **规则优先，Agent 补充**
-
-   稳定流程使用确定性规则，Agent 只处理未知别名和复杂情况。
-
-4. **不破坏原有链路**
-
-   首期作为补充 Indexer，代理故障不影响原有搜索。
-
-5. **搜索与下载分离**
-
-   Vercel 负责搜索转换，不负责传输 Torrent 文件。
-
-6. **控制查询放大**
-
-   限制别名数量、查询模板和并发数量。
-
-7. **保留原始数据**
-
-   任何标题规范化都必须保留原始 Release 标题。
-
-8. **渐进式建设**
-
-   先验证中文搜索增益，再建设后台、Agent 和自适应搜索。
+1. **Transparent Sonarr integration** — standard Torznab Indexer
+2. **Media ID first** — do not translate English title directly
+3. **Rules first, Agent supplements** — deterministic rules on stable path
+4. **Do not break existing chain** — supplementary Indexer in first release
+5. **Search/download separation** — Vercel does not proxy torrents
+6. **Control query amplification**
+7. **Preserve raw data**
+8. **Incremental build**
 
 ---
 
-## 26. 最终方向
+## 26. Final Direction
 
-首版最合理的产品形态是：
-
-```text
-一个部署在 Vercel 上的虚拟 Torznab Indexer
-```
-
-它作为 Sonarr 的额外 Indexer 接入，接收 Sonarr 搜索请求，根据媒体 ID 扩展中文原名、简体名、繁体名和人工别名，再通过 Prowlarr 搜索真实站点。
-
-MVP 不需要引入完整 Agent，也不需要爬取站点页面。
-
-首期核心闭环为：
+First-release product shape:
 
 ```text
-Sonarr 搜索
-→ Vercel 接收 Torznab 请求
-→ TVDB ID 匹配标题
-→ 扩展中文别名
-→ 调用 Prowlarr
-→ 合并去重
-→ 返回 Torznab XML
-→ Sonarr 展示和抓取
+A virtual Torznab Indexer deployed on Vercel
 ```
 
-在确认中文搜索确实能够增加有效结果后，再逐步加入别名管理、Agent 推荐、Release 标题规范化和自适应查询策略。
+Connect as extra Sonarr Indexer; expand Chinese original, simplified, traditional, and manual aliases by media ID; search real sites via Prowlarr.
+
+MVP needs no full Agent or site crawling.
+
+Core closed loop:
+
+```text
+Sonarr search
+→ Vercel receives Torznab request
+→ TVDB ID matches titles
+→ Expand Chinese aliases
+→ Call Prowlarr
+→ Merge dedupe
+→ Return Torznab XML
+→ Sonarr display and grab
+```
+
+After confirming Chinese search adds effective results, add alias management, Agent suggestions, release normalization, and adaptive query strategy incrementally.
