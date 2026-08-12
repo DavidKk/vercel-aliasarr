@@ -154,4 +154,44 @@ describe('unified indexer client', () => {
     // b has no override → unknown → kept; a matches → kept; equivalent to all
     expect(jackettSearch).toHaveBeenCalledWith('Query', { categories: [5000], indexerIds: undefined })
   })
+
+  it('scopes search to a single Prowlarr indexer id', async () => {
+    const prowlarrSearch = jest.fn(async () => [])
+    const jackettSearch = jest.fn(async () => [])
+    const config = defaultAliasarrConfig()
+    const client = createIndexerClient({
+      prowlarr: { search: prowlarrSearch, ping: jest.fn(async () => true), listIndexers: jest.fn(async () => []) },
+      jackett: { search: jackettSearch, ping: jest.fn(async () => true), listIndexers: jest.fn(async () => []) },
+      loadConfig: async () => ({ config, exists: true }),
+    })
+
+    await client.search('Query', {
+      categories: [5000],
+      mediaType: 'series',
+      scope: { provider: 'prowlarr', indexerId: '12' },
+    })
+
+    expect(prowlarrSearch).toHaveBeenCalledWith('Query', { categories: [5000], indexerIds: [12] })
+    expect(jackettSearch).not.toHaveBeenCalled()
+  })
+
+  it('scopes search to a single Jackett indexer id', async () => {
+    const prowlarrSearch = jest.fn(async () => [])
+    const jackettSearch = jest.fn(async () => [])
+    const config = defaultAliasarrConfig()
+    const client = createIndexerClient({
+      prowlarr: { search: prowlarrSearch, ping: jest.fn(async () => true), listIndexers: jest.fn(async () => []) },
+      jackett: { search: jackettSearch, ping: jest.fn(async () => true), listIndexers: jest.fn(async () => []) },
+      loadConfig: async () => ({ config, exists: true }),
+    })
+
+    await client.search('Query', {
+      categories: [2000],
+      mediaType: 'movie',
+      scope: { provider: 'jackett', indexerId: 'nyaa-si' },
+    })
+
+    expect(jackettSearch).toHaveBeenCalledWith('Query', { categories: [2000], indexerIds: ['nyaa-si'] })
+    expect(prowlarrSearch).not.toHaveBeenCalled()
+  })
 })

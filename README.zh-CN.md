@@ -6,9 +6,9 @@ Aliasarr 是部署在 Vercel 上的虚拟 Torznab 索引器：为 Sonarr / Radar
 
 ## 特点
 
-- **对接 *arr**：对外提供 `/api/torznab`（API Path 填 `/api`），Sonarr / Radarr 可按普通 Indexer 接入。`/api` 与 `/api/torznab` 仍可作为兼容入口。
+- **对接 _arr_**：对外提供 `/api/torznab`（API Path 填 `/api`），Sonarr / Radarr 可按普通 Indexer 接入。`/api` 与 `/api/torznab` 仍可作为兼容入口。
 - **别名链路**：优先读 Gist YAML，未命中再查 TMDB / Bangumi，并将新别名写回 Gist；中文简繁用 OpenCC 归一。
-- **管理后台**：配置 Prowlarr / Jackett、选择索引器、编辑 Gist YAML，并一键在 Sonarr / Radarr 中安装或移除 Aliasarr。
+- **管理后台**：配置 Prowlarr / Jackett、选择索引器、编辑 Gist YAML，并一键按上游 Indexer 同步或清理 Sonarr / Radarr 中的 Aliasarr 条目。
 - **HTTP MCP**：`/api/mcp` 供 Agent 解析标题、调试搜索，使用后台配置的 Torznab API Key 鉴权。
 - **加密配置**：服务地址与凭证用 AES-256-GCM 封存在 Upstash Redis。Gist / TMDB / Bangumi、索引器 API Key 和自定义请求头在部署后于后台填写，不要写进环境变量。
 

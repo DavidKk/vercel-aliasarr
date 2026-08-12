@@ -24,12 +24,19 @@ export function ArrIndexerSyncRow({
   busy: boolean
   onToggle(enabled: boolean): void
 }) {
+  const installedCount = status?.installedCount ?? 0
+  const helperText =
+    disabledReason ??
+    (installedCount > 0
+      ? `Synced ${installedCount} indexer${installedCount === 1 ? '' : 's'} in ${label}. Sync refreshes URL and API key; tags, categories, and priority stay in ${label}.`
+      : `Not synced in ${label}. Sync creates one Torznab entry per selected upstream indexer.`)
+
   return (
     <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-app-border/70 pt-4">
       <Toggle
         checked={Boolean(status?.installed)}
-        label={busyLabel ? 'Updating…' : 'Aliasarr indexer'}
-        helperText={disabledReason ?? (status?.installed ? `Installed in ${label}` : `Not installed in ${label}`)}
+        label={busyLabel ? 'Updating…' : 'Aliasarr indexers'}
+        helperText={helperText}
         disabled={disabledReason != null || busy}
         onChange={onToggle}
       />

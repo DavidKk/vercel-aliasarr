@@ -6,7 +6,7 @@ import { assertTorznabApiKey, UnauthorizedError } from '@/services/security/api-
 import { buildCapsXml } from '@/services/torznab/caps'
 import { TorznabError } from '@/services/torznab/errors'
 import { parseTorznabQuery } from '@/services/torznab/parser'
-import type { TorznabItem } from '@/services/torznab/types'
+import type { TorznabIndexerScope, TorznabItem } from '@/services/torznab/types'
 import { buildErrorXml, buildRssXml } from '@/services/torznab/xml-builder'
 import { childLogger } from '@/utils/logger'
 
@@ -20,6 +20,7 @@ export interface TorznabDeps {
     search: (req: ReturnType<typeof parseTorznabQuery>) => Promise<SearchResult[]>
     tvSearch?: (req: ReturnType<typeof parseTorznabQuery>) => Promise<SearchResult[]>
   }
+  scope?: TorznabIndexerScope
 }
 
 export async function getDefaultTorznabDeps(): Promise<TorznabDeps> {
@@ -55,7 +56,7 @@ export async function handleTorznabRequest(url: URL, deps: TorznabDeps): Promise
   const log = childLogger({ requestId })
 
   try {
-    const req = parseTorznabQuery(url.searchParams)
+    const req = { ...parseTorznabQuery(url.searchParams), scope: deps.scope }
     assertTorznabApiKey(req.apikey, deps.apiKey)
 
     if (req.type === 'caps') {
@@ -73,6 +74,7 @@ export async function handleTorznabRequest(url: URL, deps: TorznabDeps): Promise
         season: req.season,
         ep: req.ep,
         year: req.year,
+        scope: deps.scope,
       },
       'torznab search'
     )
@@ -106,10 +108,10 @@ export async function handleTorznabRequest(url: URL, deps: TorznabDeps): Promise
 }
 
 /** Load runtime deps and always return Torznab XML (never Next HTML error pages). */
-export async function serveTorznabRequest(request: Request, loadDeps: () => Promise<TorznabDeps> = getDefaultTorznabDeps): Promise<Response> {
+export async function serveTorznabRequest(request: Request, loadDeps: () => Promise<TorznabDeps> = getDefaultTorznabDeps, scope?: TorznabIndexerScope): Promise<Response> {
   try {
     const deps = await loadDeps()
-    return handleTorznabRequest(new URL(request.url), deps)
+    return handleTorznabRequest(new URL(request.url), { ...deps, scope: scope ?? deps.scope })
   } catch (err) {
     childLogger({ requestId: randomUUID() }).error({ err: err instanceof Error ? err.message : String(err) }, 'torznab deps error')
     return new Response(buildErrorXml(900, 'Internal error'), {
@@ -117,4 +119,12 @@ export async function serveTorznabRequest(request: Request, loadDeps: () => Prom
       headers: XML_HEADERS,
     })
   }
+}
+
+export function parseTorznabIndexerScope(provider: string, indexerId: string): TorznabIndexerScope | null {
+  if (provider !== 'prowlarr' && provider !== 'jackett') return null
+  const id = indexerId.trim()
+  if (!id) return null
+  if (provider === 'prowlarr' && !/^\d+$/.test(id)) return null
+  return { provider, indexerId: id }
 }

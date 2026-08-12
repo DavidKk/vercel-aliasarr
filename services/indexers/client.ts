@@ -2,12 +2,15 @@ import type { AliasarrConfig } from '@/services/config'
 import type { JackettClient } from '@/services/jackett'
 import type { ProwlarrClient } from '@/services/prowlarr/client'
 import type { SearchResult } from '@/services/search/types'
+import type { TorznabIndexerScope } from '@/services/torznab/types'
 
 import { effectiveSearchLanguages, indexerLanguagesAllowed, resolveIndexerLanguages } from './languages'
 
 export interface IndexerSearchOptions {
   categories?: number[]
   mediaType: 'series' | 'movie'
+  /** Force a single upstream indexer (Aliasarr per-indexer Torznab scope). */
+  scope?: TorznabIndexerScope
 }
 
 export interface IndexerClient {
@@ -29,7 +32,7 @@ function overrideFor(overrides: Record<string, string[]> | undefined, id: string
   return overrides?.[String(id)]
 }
 
-async function resolveProwlarrIndexerIds(
+export async function resolveProwlarrIndexerIds(
   prowlarr: ProwlarrClient,
   selection: AliasarrConfig['indexers']['prowlarr'],
   languages: string[],
@@ -67,7 +70,7 @@ async function resolveProwlarrIndexerIds(
   return languageMatched
 }
 
-async function resolveJackettIndexerIds(jackett: JackettClient, selection: AliasarrConfig['indexers']['jackett'], languages: string[]): Promise<string[] | undefined> {
+export async function resolveJackettIndexerIds(jackett: JackettClient, selection: AliasarrConfig['indexers']['jackett'], languages: string[]): Promise<string[] | undefined> {
   if (!languages.length) {
     return selection.mode === 'selected' ? selection.indexerIds : undefined
   }
@@ -96,6 +99,48 @@ async function resolveJackettIndexerIds(jackett: JackettClient, selection: Alias
   return languageMatched
 }
 
+/** Resolve concrete indexer ids for sync (never undefined/"all" — expands to listed ids). */
+export async function listProwlarrIndexerTargets(
+  prowlarr: ProwlarrClient,
+  selection: AliasarrConfig['indexers']['prowlarr'],
+  languages: string[],
+  envFallbackIds: number[] | undefined,
+  configExists: boolean
+): Promise<Array<{ id: string; name: string }>> {
+  const listed = await prowlarr.listIndexers()
+  const enabled = listed.filter((indexer) => indexer.enable !== false)
+  const ids = await resolveProwlarrIndexerIds(prowlarr, selection, languages, envFallbackIds, configExists)
+  const allowed = ids == null ? null : new Set(ids)
+  return enabled
+    .filter((indexer) => (allowed == null ? true : allowed.has(indexer.id)))
+    .filter((indexer) => {
+      if (!languages.length) return true
+      const effective = resolveIndexerLanguages(overrideFor(selection.languageOverrides, indexer.id), indexer.language)
+      return indexerLanguagesAllowed(effective, languages)
+    })
+    .map((indexer) => ({ id: String(indexer.id), name: indexer.name }))
+}
+
+export async function listJackettIndexerTargets(
+  jackett: JackettClient,
+  selection: AliasarrConfig['indexers']['jackett'],
+  languages: string[]
+): Promise<Array<{ id: string; name: string }>> {
+  const listed = await jackett.listIndexers()
+  const ids = await resolveJackettIndexerIds(jackett, selection, languages)
+  const allowed = ids == null ? null : new Set(ids)
+  return listed
+    .filter((indexer) => (allowed == null ? true : allowed.has(indexer.id)))
+    .filter((indexer) => {
+      if (!languages.length) return true
+      const overrides = selection.languageOverrides ?? {}
+      if (!Object.keys(overrides).length) return true
+      const effective = resolveIndexerLanguages(overrideFor(overrides, indexer.id), undefined)
+      return indexerLanguagesAllowed(effective, languages)
+    })
+    .map((indexer) => ({ id: indexer.id, name: indexer.name }))
+}
+
 export function createIndexerClient(config: IndexerClientConfig): IndexerClient {
   async function search(query: string, options: IndexerSearchOptions): Promise<SearchResult[]> {
     const stored = await config.loadConfig()
@@ -103,6 +148,18 @@ export function createIndexerClient(config: IndexerClientConfig): IndexerClient 
     const prowlarrSelection = stored.config.indexers.prowlarr
     const jackettSelection = stored.config.indexers.jackett
     const languages = effectiveSearchLanguages(stored.config.indexers.languages)
+
+    if (options.scope?.provider === 'prowlarr') {
+      if (!config.prowlarr) return []
+      const id = Number(options.scope.indexerId)
+      if (!Number.isFinite(id)) return []
+      return config.prowlarr.search(query, { categories: options.categories, indexerIds: [id] })
+    }
+
+    if (options.scope?.provider === 'jackett') {
+      if (!config.jackett) return []
+      return config.jackett.search(query, { categories: options.categories, indexerIds: [options.scope.indexerId] })
+    }
 
     if (config.prowlarr && (prowlarrSelection.mode === 'all' || prowlarrSelection.indexerIds.length > 0)) {
       const selectedIds = await resolveProwlarrIndexerIds(config.prowlarr, prowlarrSelection, languages, config.envProwlarrIds?.[options.mediaType], stored.exists)

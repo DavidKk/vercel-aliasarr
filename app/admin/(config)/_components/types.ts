@@ -17,6 +17,7 @@ export interface ApplicationStatus {
   configured: boolean
   reachable: boolean
   installed: boolean
+  installedCount: number
   id?: number
 }
 

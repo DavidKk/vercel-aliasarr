@@ -1,8 +1,32 @@
-import { handleTorznabRequest, serveTorznabRequest } from '../../services/torznab/handler'
+import { handleTorznabRequest, parseTorznabIndexerScope, serveTorznabRequest } from '../../services/torznab/handler'
 
 describe('handleTorznabRequest', () => {
   afterEach(() => {
     unstubAllEnvs()
+  })
+
+  it('parses scoped Torznab provider/indexer paths', () => {
+    expect(parseTorznabIndexerScope('prowlarr', '12')).toEqual({ provider: 'prowlarr', indexerId: '12' })
+    expect(parseTorznabIndexerScope('jackett', 'nyaa-si')).toEqual({ provider: 'jackett', indexerId: 'nyaa-si' })
+    expect(parseTorznabIndexerScope('prowlarr', 'abc')).toBeNull()
+    expect(parseTorznabIndexerScope('other', '1')).toBeNull()
+  })
+
+  it('forwards indexer scope into search requests', async () => {
+    const search = jest.fn(async () => [])
+    const res = await handleTorznabRequest(new URL('http://localhost/api/torznab/prowlarr/12?t=tvsearch&q=test&apikey=0123456789abcdef'), {
+      apiKey: '0123456789abcdef',
+      searchService: { search },
+      scope: { provider: 'prowlarr', indexerId: '12' },
+    })
+    expect(res.status).toBe(200)
+    expect(search).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'tvsearch',
+        q: 'test',
+        scope: { provider: 'prowlarr', indexerId: '12' },
+      })
+    )
   })
 
   it('returns xml error on bad apikey', async () => {

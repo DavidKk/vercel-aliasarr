@@ -1,5 +1,12 @@
 export type TorznabType = 'caps' | 'search' | 'tvsearch' | 'movie'
 
+export type TorznabIndexerProvider = 'prowlarr' | 'jackett'
+
+export interface TorznabIndexerScope {
+  provider: TorznabIndexerProvider
+  indexerId: string
+}
+
 export interface TorznabRequest {
   type: TorznabType
   q?: string
@@ -13,6 +20,8 @@ export interface TorznabRequest {
   limit: number
   offset: number
   apikey?: string
+  /** When set, search only this upstream indexer (per-indexer Sonarr/Radarr entries). */
+  scope?: TorznabIndexerScope
 }
 
 export interface TorznabItem {

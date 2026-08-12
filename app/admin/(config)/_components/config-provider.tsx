@@ -5,10 +5,13 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useS
 import { useNotification } from '@/components/ui'
 import type { AliasarrConfig, AliasarrSecretStatus, AliasarrStringConnection, AliasarrStringSecretName, CustomHeaderSecretName } from '@/services/config'
 
+import { postApplicationsAction } from './applications-actions'
 import { type CustomHeaderEditorRow, rowsFromHeaderNames, toHeaderDrafts } from './custom-headers-editor'
 import type { ApiEnvelope } from './types'
 
 export type ConfigSection = 'services' | 'indexers' | 'applications'
+
+const autoSyncSections: ConfigSection[] = ['services', 'indexers', 'applications']
 
 type CustomHeadersState = Record<CustomHeaderSecretName, CustomHeaderEditorRow[]>
 
@@ -186,6 +189,19 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       setSecretUpdates({})
       setMessage(`Configuration saved to ${storage === 'vercel-kv' ? 'Upstash Redis' : 'the local file'}.`)
       await load()
+
+      if (autoSyncSections.includes(section)) {
+        try {
+          const syncResult = await postApplicationsAction('all', 'sync')
+          if (!syncResult.noop) {
+            setMessage(syncResult.summary ?? 'Configuration saved and Aliasarr indexers synced to Sonarr/Radarr.')
+          }
+        } catch (syncError) {
+          // Save already succeeded; soft-fail auto sync so the user can retry from Applications.
+          const detail = syncError instanceof Error ? syncError.message : 'Auto sync failed'
+          setMessage(`Configuration saved. Auto sync skipped: ${detail}`)
+        }
+      }
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Save failed')
     } finally {

@@ -27,28 +27,39 @@ The dev server uses `.next-dev`; `pnpm build` uses `.next`—artifacts are isola
 
 Local config is encrypted to `.aliasarr/config.json` (in `.gitignore`, mode 0600); it does not touch production KV and survives `pnpm dev` restarts. Production reads/writes only Upstash Redis key `aliasarr:config:v1`. Both require the same `CONFIG_ENCRYPTION_KEY` in that environment to decrypt.
 
-## Sonarr
+## Sonarr / Radarr (manual aggregate Torznab)
 
-Settings → Indexers → Torznab (Custom)
+The aggregate endpoint remains available for manual setup:
 
-| Item       | Value                                |
-| ---------- | ------------------------------------ |
-| URL        | `https://<deployment>/api/torznab`   |
-| API Path   | `/api`                               |
-| API Key    | Same Torznab Key configured in Admin |
-| Categories | `5000,5030,5040,5045`                |
+| Item       | Value                                                         |
+| ---------- | ------------------------------------------------------------- |
+| URL        | `https://<deployment>/api/torznab`                            |
+| API Path   | `/api`                                                        |
+| API Key    | Same Torznab Key configured in Admin                          |
+| Categories | Sonarr: `5000,5030,5040,5045` · Radarr: `2000,2030,2040,2045` |
 
-## Radarr
-
-Same URL / API Path / API Key; Categories: `2000,2030,2040,2045`.
+Prefer Application Sync (below) so each upstream indexer gets its own entry.
 
 ## Prowlarr / Jackett and Application Sync
 
-Configure and enable Prowlarr / Jackett separately at `/admin/indexers`; choose "all enabled" or specific Indexers. URL and API Key are stored as one AES-256-GCM encrypted connection bundle.
+Configure and enable Prowlarr / Jackett at `/admin/indexers`; choose "all enabled" or specific Indexers (plus language filters). URL and API Key are stored as one AES-256-GCM encrypted connection bundle.
 
-After configuring Sonarr / Radarr URL and API Key, install, update, or remove the Aliasarr Torznab Indexer on the same page via each app's `/api/v3` API—no manual entry required.
+After configuring Sonarr / Radarr URL and API Key, use **Sync all to Sonarr & Radarr** on `/admin/applications`, or toggle each app individually. Saving Indexers, Applications, or Services configuration also auto-resyncs managed entries to both apps when they are configured.
 
-Sync runs the application's Indexer Test first. If the only failure is "no results returned for current categories", the save request continues with official `forceSave=true`; connection, auth, protocol, and other test errors still abort sync to avoid saving invalid config.
+**Remove all Aliasarr indexers** deletes every managed Aliasarr entry (and legacy bare `Aliasarr`) from both Sonarr and Radarr.
+
+| Item     | Value                                                                                 |
+| -------- | ------------------------------------------------------------------------------------- |
+| Name     | `{indexerName} (Aliasarr · {Prowlarr\|Jackett})` (e.g. `1337x (Aliasarr · Prowlarr)`) |
+| URL      | `https://<deployment>/api/torznab/{prowlarr\|jackett}/{indexerId}`                    |
+| API Path | `/api`                                                                                |
+| API Key  | Same Torznab Key configured in Admin                                                  |
+
+Defaults on **create**: RSS / automatic / interactive search on, priority `25`, and the category defaults above. Later syncs only refresh URL and API key — tags, categories, priority, and search toggles stay as edited in Sonarr/Radarr.
+
+Clearing the Indexers selection and syncing (or saving config) prunes managed Aliasarr entries. Sync no longer keeps a single aggregate `Aliasarr` indexer.
+
+*_Create workaround for *arr 6.x*_: empty-category Test failures are hard errors even with `forceSave` on create. Aliasarr creates each indexer disabled first (skips Test), then enables it with `forceSave=true` on update (skips Test). Updates always use `forceSave` and do not re-test.
 
 Aliasarr supplements Chinese alias search, so it can coexist with ordinary Indexers synced from Prowlarr to Sonarr/Radarr. If both remain, Prowlarr-synced items handle original titles and RSS; Aliasarr handles alias expansion. Do not add Aliasarr back into Prowlarr—it would create recursive search.
 

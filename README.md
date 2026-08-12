@@ -6,9 +6,9 @@ Aliasarr is a virtual Torznab indexer on Vercel that expands Chinese title alias
 
 ## Features
 
-- **Torznab for *arr**: Expose `/api/torznab` (API Path `/api`) so Sonarr and Radarr can search Aliasarr like any other indexer. `/api` and `/api/torznab` remain available as compatible entry points.
+- **Torznab for _arr_**: Expose `/api/torznab` (API Path `/api`) so Sonarr and Radarr can search Aliasarr like any other indexer. `/api` and `/api/torznab` remain available as compatible entry points.
 - **Alias chain**: Resolve titles from Gist YAML first, then TMDB/Bangumi on miss, write new aliases back to Gist, and normalize Chinese variants with OpenCC.
-- **Admin console**: Configure Prowlarr/Jackett, pick indexers, edit Gist YAML, and install or remove Aliasarr in Sonarr/Radarr in one click.
+- **Admin console**: Configure Prowlarr/Jackett, pick indexers, edit Gist YAML, and sync or clear per-indexer Aliasarr entries in Sonarr/Radarr in one click.
 - **HTTP MCP**: `/api/mcp` lets agents resolve titles and run debug searches with the Admin Torznab API key.
 - **Encrypted config**: Service URLs and credentials are sealed with AES-256-GCM in Upstash Redis. Gist/TMDB/Bangumi keys, indexer API keys, and custom headers are entered in Admin after deploy — not as environment variables.
 
