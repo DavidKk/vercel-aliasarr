@@ -174,6 +174,6 @@ export function AdminChrome({ children, username }: { children: ReactNode; usern
   )
 }
 
-export function AdminPageHeader({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
-  return <PageHeader density="admin" eyebrow={eyebrow} title={title} description={description} />
+export function AdminPageHeader({ eyebrow, title, description, status }: { eyebrow: string; title: string; description: string; status?: ReactNode }) {
+  return <PageHeader density="admin" eyebrow={eyebrow} title={title} description={description} status={status} />
 }

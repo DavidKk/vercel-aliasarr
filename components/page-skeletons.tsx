@@ -39,7 +39,13 @@ export function AdminPageSkeleton({ cards = 2 }: { cards?: number }) {
 export function ConfigContentSkeleton() {
   return (
     <section aria-busy="true" aria-label="Loading configuration">
-      <Skeleton className="h-3 w-24" />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Skeleton className="h-3 w-24" />
+        <span className="flex items-center gap-2">
+          <Skeleton className="h-6 w-24" rounded="full" />
+          <Skeleton className="h-6 w-20" rounded="full" />
+        </span>
+      </div>
       <Skeleton className="mt-3 h-7 w-52" />
       <Skeleton className="mt-3 h-3 w-full max-w-xl" />
       <div className="mt-4 grid max-w-3xl gap-4">

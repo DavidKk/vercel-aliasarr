@@ -7,13 +7,25 @@ import { AdminPageHeader } from '@/components/admin-chrome'
 import { AdminCard, AdminCardHeader, AdminStack } from '@/components/admin-layout'
 import { FieldHint, Input, Tooltip } from '@/components/ui'
 
+import { useConfigForm } from './config-provider'
+
 export function ConfigPage({ eyebrow, title, description, children, footer }: { eyebrow: string; title: string; description: string; children: ReactNode; footer?: ReactNode }) {
   return (
     <section>
-      <AdminPageHeader eyebrow={eyebrow} title={title} description={description} />
+      <AdminPageHeader eyebrow={eyebrow} title={title} description={description} status={<ConfigStorageStatus />} />
       <AdminStack className="max-w-3xl">{children}</AdminStack>
       {footer}
     </section>
+  )
+}
+
+function ConfigStorageStatus() {
+  const { encrypted, storage, storageConfigured } = useConfigForm()
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      <StatusPill ok={storageConfigured}>{storage === 'vercel-kv' ? 'Upstash Redis' : 'Local file'}</StatusPill>
+      <StatusPill ok={encrypted}>{encrypted ? 'Encrypted' : 'Pending encryption'}</StatusPill>
+    </span>
   )
 }
 

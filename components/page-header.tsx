@@ -1,8 +1,30 @@
-export function PageHeader({ eyebrow, title, description, density = 'site' }: { eyebrow?: string; title: string; description?: string; density?: 'site' | 'admin' | 'config' }) {
+import type { ReactNode } from 'react'
+
+export function PageHeader({
+  eyebrow,
+  title,
+  description,
+  status,
+  density = 'site',
+}: {
+  eyebrow?: string
+  title: string
+  description?: string
+  status?: ReactNode
+  density?: 'site' | 'admin' | 'config'
+}) {
+  const meta =
+    eyebrow || status ? (
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        {eyebrow ? <p className="ui-label">{eyebrow}</p> : null}
+        {status ? <div className="ml-auto flex items-center">{status}</div> : null}
+      </div>
+    ) : null
+
   if (density === 'config') {
     return (
       <header className="mb-6">
-        {eyebrow ? <p className="ui-label mb-2">{eyebrow}</p> : null}
+        {meta}
         <h1 className="font-display text-2xl font-semibold tracking-tight text-app-ink">{title}</h1>
         {description ? <p className="mt-2 text-sm leading-6 text-app-muted">{description}</p> : null}
       </header>
@@ -12,7 +34,7 @@ export function PageHeader({ eyebrow, title, description, density = 'site' }: { 
   if (density === 'admin') {
     return (
       <header className="mb-8 border-b border-app-border/70 pb-6">
-        {eyebrow ? <p className="ui-label mb-2">{eyebrow}</p> : null}
+        {meta}
         <h1 className="font-display text-3xl font-semibold tracking-tight text-app-ink">{title}</h1>
         {description ? <p className="mt-2 max-w-2xl text-sm leading-6 text-app-muted">{description}</p> : null}
       </header>
