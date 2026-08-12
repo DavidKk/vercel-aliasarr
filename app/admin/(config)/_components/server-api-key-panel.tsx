@@ -4,6 +4,42 @@ import { FiCheck, FiCopy } from 'react-icons/fi'
 
 import { Button, FieldHint, Input, Tooltip } from '@/components/ui'
 
+export function publicTorznabUrl(origin = typeof window !== 'undefined' ? window.location.origin : ''): string {
+  return `${origin.replace(/\/+$/, '')}/api/torznab`
+}
+
+export function TorznabUrlField({ url, copied, onCopy }: { url: string; copied: boolean; onCopy(): void }) {
+  return (
+    <label className="block min-w-0">
+      <span className="flex h-5 items-center gap-2">
+        <span className="ui-label">Torznab URL</span>
+        <FieldHint content="Derived from this deployment host. Use it as the Torznab indexer URL in Sonarr or Radarr." />
+      </span>
+      <span className="relative mt-2 block">
+        <Input
+          className="w-full cursor-text select-all pr-11 font-mono"
+          type="text"
+          readOnly
+          value={url}
+          onClick={(event) => event.currentTarget.select()}
+          onFocus={(event) => event.currentTarget.select()}
+        />
+        <Tooltip content={copied ? 'Copied' : 'Copy Torznab URL'} placement="bottom" triggerClassName="absolute inset-y-0 right-0 flex w-10 items-center justify-center">
+          <button
+            type="button"
+            className="flex h-full w-full items-center justify-center text-app-muted transition hover:text-app-ink disabled:cursor-not-allowed disabled:opacity-35"
+            aria-label={copied ? 'Torznab URL copied' : 'Copy Torznab URL'}
+            disabled={!url}
+            onClick={onCopy}
+          >
+            {copied ? <FiCheck className="h-4 w-4" aria-hidden /> : <FiCopy className="h-4 w-4" aria-hidden />}
+          </button>
+        </Tooltip>
+      </span>
+    </label>
+  )
+}
+
 export function ServerApiKeyField({ apiKey, configured, busy, copied, onCopy }: { apiKey: string; configured: boolean; busy: boolean; copied: boolean; onCopy(): void }) {
   return (
     <label className="block min-w-0">
@@ -21,7 +57,7 @@ export function ServerApiKeyField({ apiKey, configured, busy, copied, onCopy }: 
           onClick={(event) => event.currentTarget.select()}
           onFocus={(event) => event.currentTarget.select()}
         />
-        <Tooltip content={copied ? 'Copied' : 'Copy Server API key'} placement="left" triggerClassName="absolute inset-y-0 right-0 flex w-10 items-center justify-center">
+        <Tooltip content={copied ? 'Copied' : 'Copy Server API key'} placement="bottom" triggerClassName="absolute inset-y-0 right-0 flex w-10 items-center justify-center">
           <button
             type="button"
             className="flex h-full w-full items-center justify-center text-app-muted transition hover:text-app-ink disabled:cursor-not-allowed disabled:opacity-35"

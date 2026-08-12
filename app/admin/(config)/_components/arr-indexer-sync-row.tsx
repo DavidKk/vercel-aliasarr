@@ -52,7 +52,7 @@ export function ApplicationStatusButton({
   const connected = Boolean(status?.configured && status.reachable)
   const label = status?.reachable ? 'Connected' : status?.configured ? 'Offline' : 'Unconfigured'
   return (
-    <Tooltip content={`Refresh ${application} status`} placement="left">
+    <Tooltip content={`Refresh ${application} status`} placement="bottom">
       <button
         type="button"
         className={`group min-w-[6.5rem] shrink-0 rounded-full px-2.5 py-1 text-[0.62rem] font-semibold transition disabled:cursor-wait ${connected ? 'bg-app-successSoft text-app-success' : 'bg-app-dangerSoft text-app-danger'}`}

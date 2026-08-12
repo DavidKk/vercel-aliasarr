@@ -9,13 +9,15 @@ export interface OtpInputProps {
   required?: boolean
   value: string
   onChange(value: string): void
+  /** Fires once when the code first becomes complete (ACTIVE clears). Not when editing a full code. */
+  onComplete?(value: string): void
 }
 
 /**
  * Single persistent input + visual digit cells.
  * Keeps the mobile keyboard open (no per-digit focus hopping / blur).
  */
-export function OtpInput({ label = '2FA code', length = 6, required = false, value, onChange }: OtpInputProps) {
+export function OtpInput({ label = '2FA code', length = 6, required = false, value, onChange, onComplete }: OtpInputProps) {
   const inputId = useId()
   const helperId = `${inputId}-helper`
   const inputRef = useRef<HTMLInputElement>(null)
@@ -125,6 +127,10 @@ export function OtpInput({ label = '2FA code', length = 6, required = false, val
     scheduleAfterEdit(prev, next)
     valueRef.current = next
     onChange(next)
+    // Only the incomplete → complete transition (ACTIVE just cleared). Editing a full code must not fire.
+    if (next.length >= length && prev.length < length) {
+      onComplete?.(next)
+    }
   }
 
   function handleChange(event: FormEvent<HTMLInputElement>) {

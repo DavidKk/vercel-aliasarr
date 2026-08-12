@@ -160,6 +160,17 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    const nextConfig =
+      section === 'services'
+        ? {
+            ...config,
+            connections: {
+              ...config.connections,
+              aliasarrUrl: `${window.location.origin.replace(/\/+$/, '')}/api/torznab`,
+            },
+          }
+        : config
+
     setSaving(true)
     setErrorState(null)
     setMessageState(null)
@@ -167,7 +178,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       const response = await fetch('/api/config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config, secrets: secretsPayload(section), revision, section }),
+        body: JSON.stringify({ config: nextConfig, secrets: secretsPayload(section), revision, section }),
       })
       const json = (await response.json()) as ApiEnvelope<{ revision: string | null }>
       if (!response.ok || json.code !== 0) throw new Error(json.message || 'Save failed')

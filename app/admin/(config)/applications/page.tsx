@@ -84,7 +84,7 @@ export default function ApplicationsConfigPage() {
             : !status.reachable
               ? `${label} must be connected before installing the indexer`
               : !status.installed && !aliasarrUrlConfigured
-                ? 'Configure the Aliasarr URL and Server API key in Services first'
+                ? 'Generate the Server API key in Services first'
                 : null
         return (
           <ConfigCard
