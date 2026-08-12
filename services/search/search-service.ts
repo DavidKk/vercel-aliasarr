@@ -83,7 +83,10 @@ export function createSearchService(deps: SearchServiceDeps) {
     // asks Prowlarr for recent releases in those configured categories.
     const queries = generatedQueries.length > 0 ? generatedQueries : ['']
 
-    const batches = await mapPool(queries, deps.maxConcurrency, (q) => deps.indexers.search(q, { categories: req.categories, mediaType: identity.mediaType }))
+    // Network-bound: fan out query variants in parallel (wall time ≈ slowest upstream, not sum).
+    const batches = await mapPool(queries, Math.max(deps.maxConcurrency, queries.length), (q) =>
+      deps.indexers.search(q, { categories: req.categories, mediaType: identity.mediaType })
+    )
     const merged = filterRelevantResults(deduplicateResults(batches.flat()), titles)
     const limited = merged.slice(0, deps.resultLimit)
     const byIndexer = batches.flat().reduce<Record<string, number>>((summary, result) => {
