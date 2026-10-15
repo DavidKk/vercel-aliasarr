@@ -27,7 +27,7 @@
     "@upstash/redis": "^1.38.2",
     "@vercel/analytics": "^1.5.0",
     "@vercel/speed-insights": "^1.2.0",
-    "cookie": "^1.1.1",
+    "cookie": "^2.0.1",
     "jose": "^6.2.8",
     "next": "15.5.9",
     "opencc-js": "^1.0.5",
