@@ -10,10 +10,6 @@ export default function nextConfig(phase: string): NextConfig {
       NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(),
     },
     serverExternalPackages: ['pino', 'opencc-js'],
-    eslint: {
-      // Match other vercel-* projects: lint via `pnpm lint` so build is not blocked by eslint sort rules
-      ignoreDuringBuilds: true,
-    },
     async redirects() {
       return [
         { source: '/admin/config', destination: '/admin/services', permanent: false },
